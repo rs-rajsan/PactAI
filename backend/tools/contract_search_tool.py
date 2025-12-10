@@ -13,7 +13,8 @@ load_dotenv()
 from .utils import convert_neo4j_date
 
 CONTRACT_TYPES = [
-    "Affiliate Agreement" "Development",
+    "Affiliate Agreement",
+    "Development",
     "Distributor",
     "Endorsement",
     "Franchise",
@@ -24,7 +25,8 @@ CONTRACT_TYPES = [
     "Maintenance",
     "Manufacturing",
     "Marketing",
-    "Non Compete/Solicit" "Outsourcing",
+    "Non Compete/Solicit",
+    "Outsourcing",
     "Promotion",
     "Reseller",
     "Service",
@@ -32,6 +34,20 @@ CONTRACT_TYPES = [
     "Strategic Alliance",
     "Supply",
     "Transportation",
+    # New contract types
+    "MSA",
+    "Master Services Agreement",
+    "SOW",
+    "Statement of Work",
+    "NDA",
+    "MNDA",
+    "Non-Disclosure Agreement",
+    "DPA",
+    "Data Processing Agreement",
+    "SaaS Agreement",
+    "Subscription Agreement",
+    "IP Addendum",
+    "Licensing Addendum",
 ]
 
 graph: Neo4jGraph = Neo4jGraph(
