@@ -1,4 +1,4 @@
-from backend.agents.contract_intelligence_agents_v2 import ContractIntelligenceAgentFactory
+from backend.agents.contract_intelligence_agents import ContractIntelligenceAgentFactory
 from backend.domain.entities import ContractIntelligence, ContractClause, PolicyViolation, RiskAssessment, RedlineRecommendation
 from backend.infrastructure.contract_repository import Neo4jContractRepository
 from backend.agent_manager import AgentManager

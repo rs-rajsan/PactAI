@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
-from backend.services.document_processing_service_v2 import DocumentServiceFactory
+from backend.services.document_processing_service import DocumentServiceFactory
 from backend.domain.entities import DocumentProcessingRequest
 from backend.agent_manager import AgentManager
 import os
