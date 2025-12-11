@@ -31,27 +31,47 @@ async def upload_pdf(
     - Returns processing status
     """
     
+    logger.info(f"=== UPLOAD START: {file.filename if file else 'NO FILE'} ===")
+    
     try:
         # Input validation
+        logger.info(f"Step 1: Input validation for file: {file.filename}")
         if not file.filename:
+            logger.error("No filename provided")
             raise HTTPException(status_code=400, detail="No filename provided")
         
         if not file.filename.lower().endswith('.pdf'):
+            logger.error(f"Invalid file type: {file.filename}")
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
         
         # Check file size (50MB limit)
+        logger.info("Step 2: Reading file content")
         file_content = await file.read()
+        logger.info(f"File size: {len(file_content)} bytes")
         if len(file_content) > 50 * 1024 * 1024:
+            logger.error(f"File too large: {len(file_content)} bytes")
             raise HTTPException(status_code=400, detail="File too large (max 50MB)")
         
         # Check for duplicate by filename
-        duplicate_check = agent_manager.agents["gemini-2.0-flash"]._llm if hasattr(agent_manager.agents["gemini-2.0-flash"], '_llm') else agent_manager.agents["gemini-2.0-flash"]
-        from backend.infrastructure.contract_repository import Neo4jContractRepository
-        repo = Neo4jContractRepository()
+        logger.info("Step 3: Checking for duplicates")
+        try:
+            duplicate_check = agent_manager.agents["gemini-2.0-flash"]._llm if hasattr(agent_manager.agents["gemini-2.0-flash"], '_llm') else agent_manager.agents["gemini-2.0-flash"]
+            from backend.infrastructure.contract_repository import Neo4jContractRepository
+            repo = Neo4jContractRepository()
+            logger.info("Repository initialized successfully")
+        except Exception as repo_error:
+            logger.error(f"Repository initialization failed: {repo_error}")
+            raise
         
         # Simple duplicate check by filename
-        existing_query = "MATCH (c:Contract) WHERE c.file_id CONTAINS $filename RETURN c.file_id LIMIT 1"
-        existing = repo.graph.query(existing_query, {"filename": file.filename.replace(".pdf", "")})
+        try:
+            existing_query = "MATCH (c:Contract) WHERE c.file_id CONTAINS $filename RETURN c.file_id LIMIT 1"
+            existing = repo.graph.query(existing_query, {"filename": file.filename.replace(".pdf", "")})
+            logger.info(f"Duplicate check completed. Found: {len(existing) if existing else 0} matches")
+        except Exception as query_error:
+            logger.error(f"Duplicate check query failed: {query_error}")
+            # Continue without duplicate check
+            existing = []
         
         if existing:
             return {
@@ -63,31 +83,47 @@ async def upload_pdf(
             }
         
         # Save file temporarily
+        logger.info("Step 4: Saving file temporarily")
         temp_filename = f"{uuid.uuid4().hex}_{file.filename}"
         temp_path = f"/tmp/{temp_filename}"
         
-        with open(temp_path, "wb") as temp_file:
-            temp_file.write(file_content)
-        
-        logger.info(f"Saved uploaded file: {file.filename} -> {temp_path}")
+        try:
+            with open(temp_path, "wb") as temp_file:
+                temp_file.write(file_content)
+            logger.info(f"File saved successfully: {file.filename} -> {temp_path}")
+        except Exception as save_error:
+            logger.error(f"Failed to save file: {save_error}")
+            raise
         
         # Extract full text for storage
-        from backend.infrastructure.text_extractors import TextExtractionService
-        text_extractor = TextExtractionService()
-        full_text = text_extractor.extract_with_fallback(temp_path)
+        logger.info("Step 5: Extracting text from PDF")
+        try:
+            from backend.infrastructure.text_extractors import TextExtractionService
+            text_extractor = TextExtractionService()
+            full_text = text_extractor.extract_with_fallback(temp_path)
+            logger.info(f"Text extraction completed. Length: {len(full_text)} characters")
+        except Exception as extract_error:
+            logger.error(f"Text extraction failed: {extract_error}")
+            raise
         
         # Create processing request
-        processing_request = DocumentProcessingRequest(
-            file_path=temp_path,
-            filename=file.filename,
-            processing_options={"model": model, "full_text": full_text}
-        )
+        logger.info("Step 6: Creating processing request")
+        try:
+            processing_request = DocumentProcessingRequest(
+                file_path=temp_path,
+                filename=file.filename,
+                processing_options={"model": model, "full_text": full_text}
+            )
+            logger.info("Processing request created successfully")
+        except Exception as request_error:
+            logger.error(f"Failed to create processing request: {request_error}")
+            raise
         
         # Process synchronously with error handling
-        logger.info(f"Starting document processing for: {file.filename}")
+        logger.info(f"Step 7: Starting document processing for: {file.filename}")
         try:
             result = document_service.process_pdf_upload(processing_request)
-            logger.info(f"Document processing result: {result}")
+            logger.info(f"Document processing completed successfully: {result}")
         except Exception as proc_error:
             logger.error(f"Document processing failed: {str(proc_error)}")
             logger.error(f"Processing error type: {type(proc_error).__name__}")
@@ -122,9 +158,11 @@ async def upload_pdf(
         }
         
     except HTTPException:
+        logger.error(f"HTTP Exception in upload: {file.filename if file else 'unknown'}")
         raise
     except Exception as e:
-        logger.error(f"PDF upload failed for {file.filename if file else 'unknown'}: {e}")
+        logger.error(f"=== UPLOAD FAILED: {file.filename if file else 'unknown'} ===")
+        logger.error(f"Error: {e}")
         logger.error(f"Error type: {type(e).__name__}")
         import traceback
         logger.error(f"Full traceback: {traceback.format_exc()}")
@@ -133,10 +171,13 @@ async def upload_pdf(
         if 'temp_path' in locals() and temp_path and os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
-            except:
-                pass
+                logger.info(f"Cleaned up temp file: {temp_path}")
+            except Exception as cleanup_error:
+                logger.error(f"Failed to cleanup temp file: {cleanup_error}")
                 
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+    finally:
+        logger.info(f"=== UPLOAD END: {file.filename if file else 'unknown'} ===")
 
 @router.post("/upload-stream")
 async def upload_pdf_stream(
