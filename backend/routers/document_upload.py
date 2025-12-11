@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
-from backend.services.document_processing_service import DocumentServiceFactory
+from backend.services.document_processing_service_v2 import DocumentServiceFactory
 from backend.domain.entities import DocumentProcessingRequest
 from backend.agent_manager import AgentManager
 import os
@@ -44,6 +44,24 @@ async def upload_pdf(
         if len(file_content) > 50 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File too large (max 50MB)")
         
+        # Check for duplicate by filename
+        duplicate_check = agent_manager.agents["gemini-2.0-flash"]._llm if hasattr(agent_manager.agents["gemini-2.0-flash"], '_llm') else agent_manager.agents["gemini-2.0-flash"]
+        from backend.infrastructure.contract_repository import Neo4jContractRepository
+        repo = Neo4jContractRepository()
+        
+        # Simple duplicate check by filename
+        existing_query = "MATCH (c:Contract) WHERE c.file_id CONTAINS $filename RETURN c.file_id LIMIT 1"
+        existing = repo.graph.query(existing_query, {"filename": file.filename.replace(".pdf", "")})
+        
+        if existing:
+            return {
+                "message": "Duplicate file detected",
+                "filename": file.filename,
+                "status": "duplicate",
+                "existing_contract_id": existing[0]["file_id"],
+                "action": "skipped"
+            }
+        
         # Save file temporarily
         temp_filename = f"{uuid.uuid4().hex}_{file.filename}"
         temp_path = f"/tmp/{temp_filename}"
@@ -53,11 +71,16 @@ async def upload_pdf(
         
         logger.info(f"Saved uploaded file: {file.filename} -> {temp_path}")
         
+        # Extract full text for storage
+        from backend.infrastructure.text_extractors import TextExtractionService
+        text_extractor = TextExtractionService()
+        full_text = text_extractor.extract_with_fallback(temp_path)
+        
         # Create processing request
         processing_request = DocumentProcessingRequest(
             file_path=temp_path,
             filename=file.filename,
-            processing_options={"model": model}
+            processing_options={"model": model, "full_text": full_text}
         )
         
         # Process synchronously with error handling
@@ -84,11 +107,16 @@ async def upload_pdf(
         
         logger.info(f"PDF processing completed for {file.filename}: {result['status']}")
         
+        # Extract contract ID from result details if not directly available
+        contract_id = result.get("contract_id")
+        if not contract_id and "SUCCESS: Contract stored with ID:" in result.get("final_result", ""):
+            contract_id = result["final_result"].split("SUCCESS: Contract stored with ID:")[-1].strip()
+        
         return {
             "message": "PDF processing completed",
             "filename": file.filename,
             "status": result["status"],
-            "contract_id": result.get("contract_id"),
+            "contract_id": contract_id,
             "details": result.get("final_result", ""),
             "model_used": model
         }

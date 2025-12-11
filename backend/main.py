@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage, AIMessageChunk
 from backend.agent_manager import AgentManager
 from backend.routers.document_upload import router as document_router
+from backend.routers.contract_intelligence import router as intelligence_router
 
 
 load_dotenv()
@@ -26,8 +27,9 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Include document upload router
+# Include routers
 app.include_router(document_router)
+app.include_router(intelligence_router)
 
 
 @app.get("/")

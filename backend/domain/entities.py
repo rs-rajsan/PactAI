@@ -38,3 +38,49 @@ class IDocumentProcessor(ABC):
     @abstractmethod
     async def process_document(self, request: DocumentProcessingRequest) -> ContractExtractionResult:
         pass
+
+# Contract Intelligence Entities
+@dataclass
+class ContractClause:
+    clause_type: str  # Payment, Liability, IP, Confidentiality, Termination
+    content: str
+    risk_level: str  # LOW, MEDIUM, HIGH
+    confidence_score: float
+    location: str = ""
+
+@dataclass
+class PolicyViolation:
+    clause_type: str
+    issue: str
+    severity: str  # LOW, MEDIUM, HIGH, CRITICAL
+    suggested_fix: str
+    clause_content: str = ""
+
+@dataclass
+class RiskAssessment:
+    overall_risk_score: float  # 0-100
+    risk_level: str  # LOW, MEDIUM, HIGH, CRITICAL
+    critical_issues: List[str]
+    recommendations: List[str]
+
+@dataclass
+class RedlineRecommendation:
+    original_text: str
+    suggested_text: str
+    justification: str
+    priority: str  # LOW, MEDIUM, HIGH
+
+@dataclass
+class ContractIntelligence:
+    clauses: List[ContractClause]
+    violations: List[PolicyViolation]
+    risk_assessment: RiskAssessment
+    redlines: List[RedlineRecommendation]
+    processing_time: float = 0.0
+
+@dataclass
+class AgentMessage:
+    agent_id: str
+    message_type: str
+    data: Dict[str, Any]
+    timestamp: str

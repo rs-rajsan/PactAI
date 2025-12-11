@@ -21,6 +21,20 @@ def upload_pdf(file_path, api_url="http://localhost:8000"):
         if response.status_code == 200:
             result = response.json()
             print(f"✅ Upload successful: {result.get('message', 'File processed')}")
+            print(f"   Status: {result.get('status')}")
+            print(f"   Details: {result.get('details', '')[:100]}...")
+            
+            # Print contract ID and intelligence analysis command
+            contract_id = result.get('contract_id')
+            if contract_id:
+                print(f"\n📋 Contract ID: {contract_id}")
+                print(f"\n🧠 Run Intelligence Analysis:")
+                print(f"curl -X POST \"http://localhost:8000/intelligence/contracts/{contract_id}/analyze\"")
+            else:
+                print(f"\n⚠️  Contract ID not available (processing may be incomplete)")
+                print(f"\n🧠 Try Intelligence Analysis with existing contracts:")
+                print(f"curl -X POST \"http://localhost:8000/intelligence/contracts/NUVEEN%20-%20REMARKETING%20AGREEMENT/analyze\"")
+            
             return True
         else:
             print(f"❌ Upload failed: {response.status_code}")

@@ -78,7 +78,7 @@ class DocumentProcessingService:
             if model_name == "gpt-4o":
                 from langchain_openai import ChatOpenAI
                 return ChatOpenAI(model="gpt-4o", temperature=0)
-            elif model_name in ["gemini-1.5-pro", "gemini-2.0-flash"]:
+            elif model_name in ["gemini-2.5-pro", "gemini-2.0-flash"]:
                 from langchain_google_genai import ChatGoogleGenerativeAI
                 return ChatGoogleGenerativeAI(model=model_name, temperature=0)
             elif model_name == "sonnet-3.5":
@@ -97,6 +97,9 @@ class DocumentProcessingService:
     def _process_with_agent(self, pdf_agent, request: DocumentProcessingRequest) -> dict:
         """Process document using PDF agent"""
         
+        # Get full text from processing options if available
+        full_text = request.processing_options.get("full_text", "")
+        
         # Create processing message for agent
         processing_message = HumanMessage(content=f"""
         Process this PDF contract document:
@@ -104,33 +107,53 @@ class DocumentProcessingService:
         File path: {request.file_path}
         Filename: {request.filename}
         
-        Please:
-        1. Extract text from the PDF
-        2. Analyze if it's a valid contract
-        3. Extract structured contract information
-        4. Validate the data quality
-        5. Store the contract if validation passes
+        You must call these tools in order:
+        1. pdf_text_extractor - Extract text from the PDF
+        2. contract_analyzer - Analyze the extracted text  
+        3. contract_storage - Store the analyzed contract data
         
-        Provide a summary of the processing results.
+        Call each tool and use the output from one as input to the next.
         """)
         
-        # Process with agent (same pattern as existing system)
         messages = [processing_message]
         
         # Stream processing results
         processing_results = []
         final_result = None
+        tool_calls_made = []
+        
+        logger.info("Starting PDF agent processing stream")
         
         for chunk in pdf_agent.stream({"messages": messages}, stream_mode=["messages", "updates"]):
+            logger.debug(f"Processing chunk: {chunk[0]}")
+            
             if chunk[0] == "messages":
                 message = chunk[1]
                 if hasattr(message[0], 'content'):
                     processing_results.append(message[0].content)
+                    logger.info(f"Agent message: {message[0].content[:100]}...")
+                
+                # Track tool calls
+                if hasattr(message[0], 'tool_calls') and message[0].tool_calls:
+                    for tool_call in message[0].tool_calls:
+                        tool_name = tool_call.get('name', 'unknown')
+                        tool_calls_made.append(tool_name)
+                        logger.info(f"Tool called: {tool_name}")
+                        
             elif chunk[0] == "updates":
                 if "assistant" in chunk[1]:
                     for msg in chunk[1]["assistant"]["messages"]:
                         if hasattr(msg, 'content'):
                             final_result = msg.content
+                            logger.info(f"Final result updated: {msg.content[:100]}...")
+                elif "tools" in chunk[1]:
+                    for msg in chunk[1]["tools"]["messages"]:
+                        if hasattr(msg, 'content'):
+                            processing_results.append(msg.content)
+                            logger.info(f"Tool result: {msg.content[:100]}...")
+        
+        logger.info(f"Processing completed. Tools called: {tool_calls_made}")
+        logger.info(f"Final result: {final_result}")
         
         # Parse final result
         result = {
@@ -141,18 +164,31 @@ class DocumentProcessingService:
             "contract_id": None
         }
         
-        # Try to extract contract ID from results
-        if final_result:
-            if "SUCCESS: Contract stored with ID:" in final_result:
-                contract_id = final_result.split("SUCCESS: Contract stored with ID:")[-1].strip()
+        # Try to extract contract ID from all results (including tool results)
+        all_results = processing_results + ([final_result] if final_result else [])
+        logger.info(f"Extracting contract ID from {len(all_results)} result messages")
+        
+        for result_text in all_results:
+            if result_text and "SUCCESS: Contract stored with ID:" in result_text:
+                contract_id = result_text.split("SUCCESS: Contract stored with ID:")[-1].strip()
                 result["contract_id"] = contract_id
                 result["status"] = "success"
-            elif "REVIEW_REQUIRED" in final_result:
+                logger.info(f"Contract stored successfully with ID: {contract_id}")
+                break
+            elif result_text and "REVIEW_REQUIRED" in result_text:
                 result["status"] = "review_required"
-            elif "SKIPPED" in final_result:
+            elif result_text and "SKIPPED" in result_text:
                 result["status"] = "skipped"
-            elif "ERROR" in final_result:
+            elif result_text and "ERROR" in result_text:
                 result["status"] = "error"
+                logger.error(f"Contract processing error: {result_text}")
+        
+        # Check if storage was successful (either via tool calls or deterministic workflow)
+        storage_attempted = "contract_storage" in tool_calls_made or "Storage Result:" in (final_result or "")
+        if not storage_attempted:
+            logger.warning("Storage was not attempted during processing")
+            result["status"] = "incomplete"
+            result["final_result"] = f"Processing incomplete - storage not attempted. Tools called: {tool_calls_made}"
         
         return result
     
