@@ -40,9 +40,8 @@ class LLMContractAnalyzer(IContractAnalyzer):
 
 {self.parser.get_format_instructions()}
 
-Use contract_type from: {CONTRACT_TYPES[:10]}"""
+Use contract_type from: {CONTRACT_TYPES}"""
         
         response = self.llm.invoke(prompt)
         result = self.parser.parse(response.content)
         return result.dict()
-    

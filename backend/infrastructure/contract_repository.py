@@ -60,6 +60,14 @@ class Neo4jContractRepository(IContractRepository):
             # Generate unique contract ID
             contract_id = f"UPLOADED_{uuid.uuid4().hex[:8].upper()}_{datetime.now().strftime('%Y%m%d')}"
             
+            # Log what we're about to store
+            logger.info(f"=== STORING CONTRACT ===")
+            logger.info(f"Contract ID: {contract_id}")
+            logger.info(f"Contract Type: {contract_data.get('contract_type', 'Unknown')}")
+            logger.info(f"Summary: {contract_data.get('summary', '')[:100]}...")
+            logger.info(f"Is Contract: {contract_data.get('is_contract', False)}")
+            logger.info(f"Confidence: {contract_data.get('confidence_score', 0.0)}")
+            
             # Generate embedding for the contract summary
             summary_text = contract_data.get("summary", "")
             contract_embedding = []
@@ -67,6 +75,7 @@ class Neo4jContractRepository(IContractRepository):
             if summary_text:
                 try:
                     contract_embedding = self.embedding_service.embed_query(summary_text)
+                    logger.info(f"Generated embedding with {len(contract_embedding)} dimensions")
                 except Exception as e:
                     logger.warning(f"Failed to generate embedding: {e}")
             
@@ -100,6 +109,8 @@ class Neo4jContractRepository(IContractRepository):
                 "embedding": contract_embedding
             }
             
+            logger.info(f"Executing Neo4j query with params: {list(contract_params.keys())}")
+            
             # Execute contract creation
             result = self.graph.query(contract_query, contract_params)
             
@@ -107,20 +118,26 @@ class Neo4jContractRepository(IContractRepository):
                 raise Exception("Failed to create contract node")
             
             created_contract_id = result[0]["contract_id"]
+            logger.info(f"Contract node created successfully: {created_contract_id}")
             
             # Create party relationships
-            self._create_party_relationships(created_contract_id, contract_data.get("parties", []))
+            parties = contract_data.get("parties", [])
+            logger.info(f"Creating {len(parties)} party relationships")
+            self._create_party_relationships(created_contract_id, parties)
             
             # Create governing law relationship
             governing_law = contract_data.get("governing_law")
             if governing_law:
+                logger.info(f"Creating governing law relationship: {governing_law}")
                 self._create_governing_law_relationship(created_contract_id, governing_law)
             
-            logger.info(f"Successfully stored contract: {created_contract_id}")
+            logger.info(f"=== CONTRACT STORED SUCCESSFULLY: {created_contract_id} ===")
             return created_contract_id
             
         except Exception as e:
             logger.error(f"Failed to store contract: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             raise
     
     def _create_party_relationships(self, contract_id: str, parties: list):
@@ -143,6 +160,7 @@ class Neo4jContractRepository(IContractRepository):
             }
             
             self.graph.query(party_query, party_params)
+            logger.info(f"Created party relationship: {party_data['name']}")
     
     def _create_governing_law_relationship(self, contract_id: str, governing_law: str):
         """Create governing law relationship"""

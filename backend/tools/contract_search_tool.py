@@ -15,7 +15,7 @@ from .utils import convert_neo4j_date
 CONTRACT_TYPES = [
     "Affiliate Agreement",
     "Development",
-    "Distributor",
+    "Distributor", 
     "Endorsement",
     "Franchise",
     "Hosting",
@@ -37,7 +37,7 @@ CONTRACT_TYPES = [
     # New contract types
     "MSA",
     "Master Services Agreement",
-    "SOW",
+    "SOW", 
     "Statement of Work",
     "NDA",
     "MNDA",
@@ -124,10 +124,45 @@ def get_contracts(
         filters.append("c.end_date <= date($max_end_date)")
         params["max_end_date"] = max_end_date
 
-    # Contract type
+    # Contract type - HYBRID APPROACH: Exact + Semantic
     if contract_type:
-        filters.append("c.contract_type = $contract_type")
-        params["contract_type"] = contract_type
+        # First try exact matching with abbreviation mapping
+        type_mappings = {
+            "MSA": ["MSA", "Master Services Agreement"],
+            "SOW": ["SOW", "Statement of Work"], 
+            "NDA": ["NDA", "MNDA", "Non-Disclosure Agreement"],
+            "DPA": ["DPA", "Data Processing Agreement"],
+            "Master Services Agreement": ["MSA", "Master Services Agreement"],
+            "Statement of Work": ["SOW", "Statement of Work"],
+            "Non-Disclosure Agreement": ["NDA", "MNDA", "Non-Disclosure Agreement"]
+        }
+        
+        possible_types = type_mappings.get(contract_type, [contract_type])
+        
+        if len(possible_types) > 1:
+            type_conditions = []
+            for i, ptype in enumerate(possible_types):
+                param_name = f"contract_type_{i}"
+                type_conditions.append(f"c.contract_type = ${param_name}")
+                params[param_name] = ptype
+            filters.append(f"({' OR '.join(type_conditions)})")
+        else:
+            # If no exact mapping, use semantic search on summary
+            search_terms = [
+                f"{contract_type} contract",
+                f"{contract_type} agreement", 
+                contract_type
+            ]
+            
+            # Create comprehensive search query
+            semantic_query = " ".join(search_terms)
+            params["type_embedding"] = embeddings.embed_query(semantic_query)
+            
+            # Use semantic search as fallback
+            cypher_statement += """
+            WITH c, vector.similarity.cosine(c.embedding, $type_embedding) AS type_score
+            WHERE type_score > 0.75
+            """
 
     # Parties (relationship-based filter)
     if parties:
@@ -144,19 +179,44 @@ def get_contracts(
 
         if parties_filter:
             filters.append(" AND ".join(parties_filter))
+    
     if active is not None:
         operator = ">=" if active else "<"
         filters.append(f"c.end_date {operator} date()")
+    
+    # Apply remaining filters
     if filters:
-        cypher_statement += f"WHERE {' AND '.join(filters)} "
-    # If summary we use vector similarity
+        if contract_type and contract_type not in type_mappings and len(type_mappings.get(contract_type, [contract_type])) == 1:
+            # Semantic search case
+            cypher_statement += f"AND {' AND '.join(filters)} "
+        else:
+            cypher_statement += f"WHERE {' AND '.join(filters)} "
+    
+    # Summary search
     if summary_search:
-        cypher_statement += (
-            "WITH c, vector.similarity.cosine(c.embedding, $embedding) "
-            "AS score ORDER BY score DESC WITH c, score WHERE score > 0.9 "
-        )  # Define a threshold limit
-        params["embedding"] = embeddings.embed_query(summary_search)
-    else:  # Else we sort by latest
+        summary_embedding = embeddings.embed_query(summary_search)
+        params["summary_embedding"] = summary_embedding
+        
+        if contract_type and contract_type not in type_mappings:
+            # Combine type and summary semantic search
+            cypher_statement += """
+            WITH c, type_score, vector.similarity.cosine(c.embedding, $summary_embedding) AS summary_score
+            WITH c, (type_score + summary_score) / 2 AS combined_score
+            WHERE combined_score > 0.8
+            ORDER BY combined_score DESC
+            """
+        else:
+            # Just summary search
+            cypher_statement += """
+            WITH c, vector.similarity.cosine(c.embedding, $summary_embedding) AS summary_score
+            WHERE summary_score > 0.9
+            ORDER BY summary_score DESC
+            """
+    elif contract_type and contract_type not in type_mappings:
+        # Just semantic type search
+        cypher_statement += "ORDER BY type_score DESC "
+    else:
+        # No semantic search, sort by date
         cypher_statement += "WITH c ORDER BY c.effective_date DESC "
 
     if cypher_aggregation:
@@ -178,6 +238,7 @@ def get_contracts(
                countries: apoc.coll.toSet([(el)<-[:PARTY_TO]-()-[:LOCATED_IN]->(country) | country.name])}
             ]
         } AS output"""
+    
     output = graph.query(cypher_statement, params)
     return [convert_neo4j_date(el) for el in output]
 
@@ -196,13 +257,13 @@ class ContractInput(BaseModel):
         None, description="Latest contract end date (YYYY-MM-DD)"
     )
     contract_type: Optional[str] = Field(
-        None, description=f"Contract type; valid types: {CONTRACT_TYPES}"
+        None, description="Contract type - supports both exact matching (MSA, SOW, NDA) and semantic search for other types"
     )
     parties: Optional[List[str]] = Field(
         None, description="List of parties involved in the contract"
     )
     summary_search: Optional[str] = Field(
-        None, description="Inspect summary of the contract"
+        None, description="Semantic search of contract content and summary"
     )
     active: Optional[bool] = Field(None, description="Whether the contract is active")
     governing_law: Optional[Location] = Field(None, description="Governing law of the contract")
@@ -211,58 +272,14 @@ class ContractInput(BaseModel):
     )
     cypher_aggregation: Optional[str] = Field(
         None,
-        description="""Custom Cypher statement for advanced aggregations and analytics.
-
-        This will be appended to the base query:
-        ```
-        MATCH (c:Contract)
-        <filtering based on other parameters>
-        WITH c, summary, contract_type, contract_scope, effective_date, end_date, parties, active, monetary_value, contract_id, countries
-        <your cypher goes here>
-        ```
-
-        Examples:
-
-        1. Count contracts by type:
-        ```
-        RETURN contract_type, count(*) AS count ORDER BY count DESC
-        ```
-
-        2. Calculate average contract duration by type:
-        ```
-        WITH contract_type, effective_date, end_date
-        WHERE effective_date IS NOT NULL AND end_date IS NOT NULL
-        WITH contract_type, duration.between(effective_date, end_date).days AS duration
-        RETURN contract_type, avg(duration) AS avg_duration ORDER BY avg_duration DESC
-        ```
-
-        3. Calculate contracts per effective date year:
-        ```
-        RETURN effective_date.year AS year, count(*) AS count ORDER BY year
-        ```
-
-        4. Counts the party with the highest number of active contracts:
-        ```
-        UNWIND parties AS party
-        WITH party.name AS party_name, active, count(*) AS contract_count
-        WHERE active = true
-        RETURN party_name, contract_count
-        ORDER BY contract_count DESC
-        LIMIT 1
-        ```
-        5. Which contracts have the highest total value?
-        ```
-        WITH * WHERE monetary_value IS NOT NULL
-        RETURN monetary_value, contract_id ORDER BY monetary_value DESC LIMIT 1
-        ```
-        """,
+        description="""Custom Cypher statement for advanced aggregations and analytics.""",
     )
 
 
 class ContractSearchTool(BaseTool):
     name: str = "ContractSearch"
     description: str = (
-        "useful for when you need to answer questions related to any contracts"
+        "useful for when you need to answer questions related to any contracts. Uses hybrid search: exact matching for common types (MSA, SOW, NDA) and semantic search for others."
     )
     args_schema: Type[BaseModel] = ContractInput
 

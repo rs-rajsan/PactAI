@@ -18,6 +18,65 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 agent_manager = AgentManager()
 document_service = DocumentServiceFactory.create_service(agent_manager)
 
+@router.get("/debug/contracts")
+async def debug_contracts():
+    """Debug endpoint to see all contracts"""
+    try:
+        from backend.infrastructure.contract_repository import Neo4jContractRepository
+        repo = Neo4jContractRepository()
+        
+        query = """
+        MATCH (c:Contract)
+        RETURN c.file_id as contract_id, 
+               c.contract_type as contract_type,
+               c.summary as summary,
+               c.source as source
+        ORDER BY c.upload_date DESC
+        """
+        
+        result = repo.graph.query(query)
+        
+        contracts = []
+        for row in result:
+            contracts.append({
+                "contract_id": row["contract_id"],
+                "contract_type": row["contract_type"],
+                "summary": row["summary"][:100] + "..." if row["summary"] and len(row["summary"]) > 100 else row["summary"],
+                "source": row["source"]
+            })
+        
+        return {
+            "total_contracts": len(contracts),
+            "contracts": contracts
+        }
+        
+    except Exception as e:
+        logger.error(f"Debug contracts failed: {e}")
+        return {"error": str(e)}
+
+@router.get("/debug/contract-types")
+async def debug_contract_types():
+    """Debug endpoint to see contract type distribution"""
+    try:
+        from backend.infrastructure.contract_repository import Neo4jContractRepository
+        repo = Neo4jContractRepository()
+        
+        query = """
+        MATCH (c:Contract)
+        RETURN c.contract_type as contract_type, count(*) as count
+        ORDER BY count DESC
+        """
+        
+        result = repo.graph.query(query)
+        
+        return {
+            "contract_types": [{"type": row["contract_type"], "count": row["count"]} for row in result]
+        }
+        
+    except Exception as e:
+        logger.error(f"Debug contract types failed: {e}")
+        return {"error": str(e)}
+
 @router.post("/upload")
 async def upload_pdf(
     background_tasks: BackgroundTasks,
@@ -43,7 +102,7 @@ async def upload_pdf(
         if not file.filename.lower().endswith('.pdf'):
             logger.error(f"Invalid file type: {file.filename}")
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
-        
+
         # Check file size (50MB limit)
         logger.info("Step 2: Reading file content")
         file_content = await file.read()
@@ -51,7 +110,7 @@ async def upload_pdf(
         if len(file_content) > 50 * 1024 * 1024:
             logger.error(f"File too large: {len(file_content)} bytes")
             raise HTTPException(status_code=400, detail="File too large (max 50MB)")
-        
+
         # Check for duplicate by filename
         logger.info("Step 3: Checking for duplicates")
         try:
@@ -62,7 +121,7 @@ async def upload_pdf(
         except Exception as repo_error:
             logger.error(f"Repository initialization failed: {repo_error}")
             raise
-        
+
         # Simple duplicate check by filename
         try:
             existing_query = "MATCH (c:Contract) WHERE c.file_id CONTAINS $filename RETURN c.file_id LIMIT 1"
@@ -81,7 +140,7 @@ async def upload_pdf(
                 "existing_contract_id": existing[0]["file_id"],
                 "action": "skipped"
             }
-        
+
         # Save file temporarily
         logger.info("Step 4: Saving file temporarily")
         temp_filename = f"{uuid.uuid4().hex}_{file.filename}"
@@ -94,7 +153,7 @@ async def upload_pdf(
         except Exception as save_error:
             logger.error(f"Failed to save file: {save_error}")
             raise
-        
+
         # Extract full text for storage
         logger.info("Step 5: Extracting text from PDF")
         try:
@@ -105,7 +164,7 @@ async def upload_pdf(
         except Exception as extract_error:
             logger.error(f"Text extraction failed: {extract_error}")
             raise
-        
+
         # Create processing request
         logger.info("Step 6: Creating processing request")
         try:
@@ -118,7 +177,7 @@ async def upload_pdf(
         except Exception as request_error:
             logger.error(f"Failed to create processing request: {request_error}")
             raise
-        
+
         # Process synchronously with error handling
         logger.info(f"Step 7: Starting document processing for: {file.filename}")
         try:

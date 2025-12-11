@@ -47,8 +47,8 @@ export function ChatInput() {
         addMessage(userMessage);
         addMessage(aiMessage);
         console.log({ model, prompt, history: history.current });
-        let BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000' 
-        await fetchEventSource(BACKEND_URL + '/run/', {
+        
+        await fetchEventSource('/api/run/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -10,6 +10,7 @@ from langchain_core.messages import HumanMessage, ToolMessage, AIMessage, AIMess
 from backend.agent_manager import AgentManager
 from backend.routers.document_upload import router as document_router
 from backend.routers.contract_intelligence import router as intelligence_router
+from backend.routers.debug import router as debug_router
 
 
 load_dotenv()
@@ -30,6 +31,7 @@ app.add_middleware(
 # Include routers
 app.include_router(document_router)
 app.include_router(intelligence_router)
+app.include_router(debug_router)
 
 
 @app.get("/")
