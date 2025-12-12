@@ -33,7 +33,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
                 onClick={() => onNavigate('agents')}
                 className={`px-4 py-2 ${currentPage === 'agents' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200'}`}
               >
-                AI Agents
+                Documentation
               </Button>
             </div>
           </div>

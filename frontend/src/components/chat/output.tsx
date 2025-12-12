@@ -19,14 +19,15 @@ export function ChatOutput() {
                     <div className="flex items-center justify-center h-full">
                         <div className="text-center max-w-2xl mx-auto p-6">
                             <h3 className="text-lg font-semibold text-slate-700 mb-3">Contract Search & Analysis</h3>
-                            <p className="text-slate-600 mb-4">Search and analyze contracts from the CUAD dataset using natural language queries.</p>
+                            <p className="text-slate-600 mb-4">Search and analyze contracts from the dataset using natural language queries.</p>
                             <div className="text-left bg-slate-50 rounded-lg p-4">
                                 <p className="text-sm font-medium text-slate-700 mb-2">Try these sample queries:</p>
                                 <ul className="text-sm text-slate-600 space-y-1">
-                                    <li>• "Find contracts with termination clauses"</li>
-                                    <li>• "Show me MSA agreements with liability caps"</li>
-                                    <li>• "What are the payment terms in SOW contracts?"</li>
-                                    <li>• "Find contracts with intellectual property provisions"</li>
+                                    <li>• how many SOW contracts? </li>
+                                    <li>• how many total active contracts? </li>
+                                    <li>• List all the contract types</li>
+                                    <li>• Display the summary of all the contracts that have monetary value of 50k </li>
+                                    <li>• who are the parties of SOW contracts?</li>
                                 </ul>
                             </div>
                         </div>

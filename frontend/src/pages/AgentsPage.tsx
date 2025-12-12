@@ -97,6 +97,19 @@ const agents = [
 ];
 
 const workflows = {
+  storage: {
+    title: 'Document Upload & Dataset Storage',
+    icon: <FileText className="w-8 h-8" />,
+    description: 'Complete flow for storing uploaded documents in searchable dataset',
+    steps: [
+      { agent: 'Document Upload', description: 'PDF validation and preprocessing', icon: <Upload className="w-5 h-5" /> },
+      { agent: 'PDF Processing Agent', description: 'Text extraction and OCR processing', icon: <FileText className="w-5 h-5" /> },
+      { agent: 'Clause Extraction Agent', description: 'Extract 41 CUAD clause types', icon: <Bot className="w-5 h-5" /> },
+      { agent: 'Knowledge Graph Storage', description: 'Store in Neo4j with relationships', icon: <CheckCircle className="w-5 h-5" /> },
+      { agent: 'Vector Database Indexing', description: 'Create embeddings for semantic search', icon: <Zap className="w-5 h-5" /> },
+      { agent: 'Dataset Integration', description: 'Add to searchable contract corpus', icon: <BarChart3 className="w-5 h-5" /> }
+    ]
+  },
   chat: {
     title: 'Contract Search & Chat',
     icon: <MessageSquare className="w-8 h-8" />,
@@ -106,17 +119,6 @@ const workflows = {
       { agent: 'Search Processing', description: 'Query analysis and vector search', icon: <Bot className="w-5 h-5" /> },
       { agent: 'Contract Retrieval', description: 'Semantic matching from Neo4j database', icon: <FileText className="w-5 h-5" /> },
       { agent: 'Response Generation', description: 'Contextual answer with contract references', icon: <CheckCircle className="w-5 h-5" /> }
-    ]
-  },
-  upload: {
-    title: 'PDF Upload & Processing',
-    icon: <Upload className="w-8 h-8" />,
-    description: 'Document ingestion and initial contract analysis',
-    steps: [
-      { agent: 'PDF Upload', description: 'File validation and upload', icon: <Upload className="w-5 h-5" /> },
-      { agent: 'PDF Processing Agent', description: 'Text extraction and structure analysis', icon: <FileText className="w-5 h-5" /> },
-      { agent: 'Contract Storage', description: 'Store in Neo4j with metadata', icon: <CheckCircle className="w-5 h-5" /> },
-      { agent: 'Ready for Analysis', description: 'Contract available for intelligence analysis', icon: <Zap className="w-5 h-5" /> }
     ]
   },
   analysis: {
@@ -152,7 +154,7 @@ export const AgentsPage: React.FC = () => {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="agents">AI Agents</TabsTrigger>
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
-          <TabsTrigger value="architecture">Architecture</TabsTrigger>
+          <TabsTrigger value="architecture">Tech Stack</TabsTrigger>
         </TabsList>
 
         <TabsContent value="agents" className="space-y-6">
@@ -253,8 +255,9 @@ export const AgentsPage: React.FC = () => {
                   <div className="mt-6 pt-4 border-t">
                     <div className="flex justify-center">
                       <Badge variant="secondary">
+                        {key === 'storage' && 'Automatic: Happens when you upload any document'}
                         {key === 'chat' && 'Try it: Go to Contract Search'}
-                        {key === 'upload' && 'Try it: Go to Document Analysis → Upload PDF'}
+
                         {key === 'analysis' && 'Try it: Upload PDF → Click Analyze'}
                       </Badge>
                     </div>
