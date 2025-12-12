@@ -41,7 +41,7 @@ interface RelationshipResult {
 }
 
 interface EnhancedSearchResultsProps {
-  results: SearchResult[];
+  results: any;
   searchLevel: string;
   totalCount?: number;
   className?: string;
@@ -53,10 +53,39 @@ export const EnhancedSearchResults: React.FC<EnhancedSearchResultsProps> = ({
   totalCount,
   className = ''
 }) => {
-  if (!results || results.length === 0) {
+  // Handle different result structures
+  let processedResults: SearchResult[] = [];
+  
+  if (!results) {
     return (
       <div className={`text-center py-8 text-slate-500 ${className}`}>
         No results found. Try adjusting your search criteria.
+      </div>
+    );
+  }
+  
+  console.log('EnhancedSearchResults received:', results);
+  console.log('Search level:', searchLevel);
+  
+  // Convert results to expected format
+  if (Array.isArray(results)) {
+    processedResults = results;
+    console.log('Processing as array, length:', processedResults.length);
+  } else if (typeof results === 'object') {
+    // Handle single result object
+    processedResults = [results];
+    console.log('Processing as single object');
+  }
+  
+  console.log('Processed results:', processedResults);
+  
+  if (processedResults.length === 0) {
+    return (
+      <div className={`text-center py-8 text-slate-500 ${className}`}>
+        No results found. Try adjusting your search criteria.
+        <div className="mt-2 text-xs">
+          Debug: Received {typeof results} - {JSON.stringify(results)}
+        </div>
       </div>
     );
   }
@@ -173,7 +202,7 @@ export const EnhancedSearchResults: React.FC<EnhancedSearchResultsProps> = ({
         )}
       </div>
 
-      {results.map((result, idx) => (
+      {processedResults.map((result, idx) => (
         <div key={idx} className="bg-white rounded-lg border border-slate-200 p-6">
           {searchLevel === 'document' && result.documents && renderDocumentResults(result.documents)}
           {searchLevel === 'section' && result.sections && renderSectionResults(result.sections)}

@@ -16,11 +16,27 @@ export const SearchPage: React.FC = () => {
     error: null
   });
 
+  const [lastSearchParams, setLastSearchParams] = useState<EnhancedSearchParams | null>(null);
+
   const handleSearch = useCallback(async (searchParams: EnhancedSearchParams) => {
     setSearchState(prev => ({ ...prev, isLoading: true, error: null }));
+    setLastSearchParams(searchParams);
     
     try {
-      const results = await enhancedSearchApi.searchContracts(searchParams);
+      const apiResponse = await enhancedSearchApi.searchContracts(searchParams);
+      console.log('API Response:', apiResponse); // Debug log
+      
+      // Handle different response structures
+      let results;
+      if (Array.isArray(apiResponse)) {
+        results = apiResponse;
+      } else if (apiResponse && typeof apiResponse === 'object') {
+        // If response has a results property, use it
+        results = apiResponse.results || [apiResponse];
+      } else {
+        results = [];
+      }
+      
       setSearchState({ results, isLoading: false, error: null });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Search failed';
@@ -52,8 +68,11 @@ export const SearchPage: React.FC = () => {
       )}
 
       {/* Search Results */}
-      {searchState.results && (
-        <EnhancedSearchResults results={searchState.results} />
+      {searchState.results && lastSearchParams && (
+        <EnhancedSearchResults 
+          results={searchState.results} 
+          searchLevel={lastSearchParams.searchLevel}
+        />
       )}
     </div>
   );
