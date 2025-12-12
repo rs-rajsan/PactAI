@@ -3,6 +3,7 @@ import { ThemeProvider } from './components/theme-provider';
 import { Navigation } from './components/Navigation';
 import { ChatPage } from './pages/ChatPage';
 import { IntelligencePage } from './pages/IntelligencePage';
+import { AgentsPage } from './pages/AgentsPage';
 import { ContractHistoryProvider } from './contexts/ContractHistoryContext';
 import { useRouter } from './lib/useRouter';
 import './App.css';
@@ -16,6 +17,8 @@ function App() {
         return <ChatPage />;
       case 'intelligence':
         return <IntelligencePage />;
+      case 'agents':
+        return <AgentsPage />;
       default:
         return <IntelligencePage />;
     }

@@ -2,8 +2,8 @@ import React from 'react';
 import { Button } from './ui/button';
 
 interface NavigationProps {
-  currentPage: 'chat' | 'intelligence';
-  onNavigate: (page: 'chat' | 'intelligence') => void;
+  currentPage: 'chat' | 'intelligence' | 'agents';
+  onNavigate: (page: 'chat' | 'intelligence' | 'agents') => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
@@ -27,6 +27,13 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
                 className={`px-4 py-2 ${currentPage === 'chat' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200'}`}
               >
                 Contract Search
+              </Button>
+              <Button
+                variant={currentPage === 'agents' ? 'default' : 'ghost'}
+                onClick={() => onNavigate('agents')}
+                className={`px-4 py-2 ${currentPage === 'agents' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200'}`}
+              >
+                AI Agents
               </Button>
             </div>
           </div>

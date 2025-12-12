@@ -1,53 +1,93 @@
 import * as React from "react"
-import * as TabsPrimitive from "@radix-ui/react-tabs"
+// import * as TabsPrimitive from "@radix-ui/react-tabs"
+// Simple cn utility
+const cn = (...classes: (string | undefined)[]) => classes.filter(Boolean).join(' ');
 
-import { cn } from "@/lib/utils"
+interface TabsProps {
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  className?: string;
+  children: React.ReactNode;
+}
 
-const Tabs = TabsPrimitive.Root
+const Tabs: React.FC<TabsProps> = ({ defaultValue, value, onValueChange, className, children }) => {
+  const [activeTab, setActiveTab] = React.useState(defaultValue || '');
+  const currentValue = value !== undefined ? value : activeTab;
+  
+  const handleValueChange = (newValue: string) => {
+    if (value === undefined) setActiveTab(newValue);
+    onValueChange?.(newValue);
+  };
+  
+  return (
+    <div className={className} data-value={currentValue}>
+      {React.Children.map(children, child => 
+        React.isValidElement(child) 
+          ? React.cloneElement(child, { currentValue, onValueChange: handleValueChange })
+          : child
+      )}
+    </div>
+  );
+};
 
-const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-      className
+interface TabsListProps {
+  className?: string;
+  children: React.ReactNode;
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
+const TabsList: React.FC<TabsListProps> = ({ className, children, value, onValueChange }) => (
+  <div className={cn("inline-flex h-10 items-center justify-center rounded-md bg-slate-100 p-1 text-slate-500", className)}>
+    {React.Children.map(children, child => 
+      React.isValidElement(child) 
+        ? React.cloneElement(child, { currentValue: value, onValueChange })
+        : child
     )}
-    {...props}
-  />
-))
-TabsList.displayName = TabsPrimitive.List.displayName
+  </div>
+);
 
-const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+interface TabsTriggerProps {
+  value: string;
+  className?: string;
+  children: React.ReactNode;
+  currentValue?: string;
+  onValueChange?: (value: string) => void;
+}
 
-const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className
-    )}
-    {...props}
-  />
-))
-TabsContent.displayName = TabsPrimitive.Content.displayName
+const TabsTrigger: React.FC<TabsTriggerProps> = ({ value: triggerValue, className, children, currentValue, onValueChange }) => {
+  const isActive = currentValue === triggerValue;
+  
+  return (
+    <button
+      className={cn(
+        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all",
+        isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900",
+        className
+      )}
+      onClick={() => onValueChange?.(triggerValue)}
+    >
+      {children}
+    </button>
+  );
+};
+
+interface TabsContentProps {
+  value: string;
+  className?: string;
+  children: React.ReactNode;
+  currentValue?: string;
+}
+
+const TabsContent: React.FC<TabsContentProps> = ({ value: contentValue, className, children, currentValue }) => {
+  if (currentValue !== contentValue) return null;
+  
+  return (
+    <div className={cn("mt-2", className)}>
+      {children}
+    </div>
+  );
+};
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }
