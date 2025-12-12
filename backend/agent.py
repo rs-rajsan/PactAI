@@ -1,4 +1,5 @@
 from backend.tools.contract_search_tool import ContractSearchTool
+from backend.tools.enhanced_contract_search_tool import EnhancedContractSearchTool
 from langchain_core.messages import SystemMessage
 from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
@@ -7,7 +8,7 @@ from datetime import date
 
 def get_agent(llm):
     # Define tools/llm
-    tools = [ContractSearchTool()]
+    tools = [ContractSearchTool(), EnhancedContractSearchTool()]
     llm_with_tools = llm.bind_tools(tools)
 
     # System message

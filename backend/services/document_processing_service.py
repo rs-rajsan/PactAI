@@ -2,6 +2,8 @@ from backend.domain.entities import DocumentProcessingRequest
 from backend.agents.pdf_processing_agent import PDFAgentFactory
 from backend.domain.value_objects import ProcessingResult, ProcessingStatus
 from backend.agents.agent_workflow_tracker import workflow_tracker
+from backend.embeddings.orchestrator import EmbeddingOrchestrator
+from backend.embeddings.validator import EmbeddingValidator
 import os
 import logging
 
@@ -16,6 +18,8 @@ class DocumentProcessingService:
     def __init__(self, agent_manager):
         self.agent_manager = agent_manager
         self.pdf_agent_factory = PDFAgentFactory()
+        self.embedding_orchestrator = EmbeddingOrchestrator()
+        self.embedding_validator = EmbeddingValidator()
     
     def process_pdf_upload(self, request: DocumentProcessingRequest) -> dict:
         """
@@ -116,8 +120,19 @@ class DocumentProcessingService:
                     "contract_id": None
                 }
             
-            # Complete agent tracking
+            # Process multi-level embeddings if contract was successfully stored
             if processing_result and processing_result.contract_id:
+                try:
+                    # Get extracted text for embedding processing
+                    extracted_text = final_state.get("extracted_text", "")
+                    if extracted_text:
+                        self._process_enhanced_embeddings(
+                            processing_result.contract_id, 
+                            extracted_text
+                        )
+                except Exception as e:
+                    logger.warning(f"Enhanced embedding processing failed: {e}")
+                
                 workflow_tracker.complete_agent(execution, f"Contract stored with ID: {processing_result.contract_id}")
             else:
                 workflow_tracker.error_agent(execution, "Failed to store contract")
