@@ -102,12 +102,12 @@ const workflows = {
     icon: <FileText className="w-8 h-8" />,
     description: 'Complete flow for storing uploaded documents in searchable dataset',
     steps: [
-      { agent: 'Document Upload', description: 'PDF validation and preprocessing', icon: <Upload className="w-5 h-5" /> },
-      { agent: 'PDF Processing Agent', description: 'Text extraction and OCR processing', icon: <FileText className="w-5 h-5" /> },
-      { agent: 'Clause Extraction Agent', description: 'Extract 41 CUAD clause types', icon: <Bot className="w-5 h-5" /> },
-      { agent: 'Knowledge Graph Storage', description: 'Store in Neo4j with relationships', icon: <CheckCircle className="w-5 h-5" /> },
-      { agent: 'Vector Database Indexing', description: 'Create embeddings for semantic search', icon: <Zap className="w-5 h-5" /> },
-      { agent: 'Dataset Integration', description: 'Add to searchable contract corpus', icon: <BarChart3 className="w-5 h-5" /> }
+      { agent: 'Document Upload', description: 'PDF validation and preprocessing', icon: <Upload className="w-5 h-5" />, tech: 'FastAPI, Pydantic validation, file size limits' },
+      { agent: 'PDF Processing Agent', description: 'Text extraction and OCR processing', icon: <FileText className="w-5 h-5" />, tech: 'PyPDF2, pdfplumber, Tesseract OCR' },
+      { agent: 'Clause Extraction Agent', description: 'Extract 41 CUAD clause types', icon: <Bot className="w-5 h-5" />, tech: 'LangChain, Gemini/OpenAI LLMs, spaCy NLP' },
+      { agent: 'Knowledge Graph Storage', description: 'Store in Neo4j with relationships', icon: <CheckCircle className="w-5 h-5" />, tech: 'Neo4j Aura, py2neo driver, Cypher queries' },
+      { agent: 'Vector Database Indexing', description: 'Create embeddings for semantic search', icon: <Zap className="w-5 h-5" />, tech: 'OpenAI embeddings, FAISS/Chroma vector DB' },
+      { agent: 'Dataset Integration', description: 'Add to searchable contract corpus', icon: <BarChart3 className="w-5 h-5" />, tech: 'PostgreSQL metadata, Redis caching' }
     ]
   },
   chat: {
@@ -115,10 +115,10 @@ const workflows = {
     icon: <MessageSquare className="w-8 h-8" />,
     description: 'Natural language search and analysis of existing contracts',
     steps: [
-      { agent: 'User Query', description: 'Natural language contract search', icon: <MessageSquare className="w-5 h-5" /> },
-      { agent: 'Search Processing', description: 'Query analysis and vector search', icon: <Bot className="w-5 h-5" /> },
-      { agent: 'Contract Retrieval', description: 'Semantic matching from Neo4j database', icon: <FileText className="w-5 h-5" /> },
-      { agent: 'Response Generation', description: 'Contextual answer with contract references', icon: <CheckCircle className="w-5 h-5" /> }
+      { agent: 'User Query', description: 'Natural language contract search', icon: <MessageSquare className="w-5 h-5" />, tech: 'React frontend, WebSocket connections' },
+      { agent: 'Search Processing', description: 'Query analysis and vector search', icon: <Bot className="w-5 h-5" />, tech: 'LangChain query processing, similarity search' },
+      { agent: 'Contract Retrieval', description: 'Semantic matching from Neo4j database', icon: <FileText className="w-5 h-5" />, tech: 'Neo4j graph traversal, vector similarity' },
+      { agent: 'Response Generation', description: 'Contextual answer with contract references', icon: <CheckCircle className="w-5 h-5" />, tech: 'LangChain RAG, Gemini/Claude LLMs' }
     ]
   },
   analysis: {
@@ -126,11 +126,11 @@ const workflows = {
     icon: <BarChart3 className="w-8 h-8" />,
     description: 'Comprehensive multi-agent contract analysis workflow',
     steps: [
-      { agent: 'Planning Agent', description: 'Create optimal execution plan', icon: <Brain className="w-5 h-5" /> },
-      { agent: 'Clause Extraction Agent', description: 'Extract key contract clauses', icon: <Bot className="w-5 h-5" /> },
-      { agent: 'Policy Compliance Agent', description: 'Check against company policies', icon: <Shield className="w-5 h-5" /> },
-      { agent: 'Risk Assessment Agent', description: 'Calculate risk scores', icon: <AlertTriangle className="w-5 h-5" /> },
-      { agent: 'Redline Generation Agent', description: 'Generate improvement suggestions', icon: <Edit3 className="w-5 h-5" /> }
+      { agent: 'Planning Agent', description: 'Create optimal execution plan', icon: <Brain className="w-5 h-5" />, tech: 'LangGraph workflows, strategy patterns' },
+      { agent: 'Clause Extraction Agent', description: 'Extract key contract clauses', icon: <Bot className="w-5 h-5" />, tech: 'Named Entity Recognition, regex patterns' },
+      { agent: 'Policy Compliance Agent', description: 'Check against company policies', icon: <Shield className="w-5 h-5" />, tech: 'Rule engine, policy templates, scoring' },
+      { agent: 'Risk Assessment Agent', description: 'Calculate risk scores', icon: <AlertTriangle className="w-5 h-5" />, tech: 'Risk matrices, weighted scoring algorithms' },
+      { agent: 'Redline Generation Agent', description: 'Generate improvement suggestions', icon: <Edit3 className="w-5 h-5" />, tech: 'Text diff algorithms, suggestion templates' }
     ]
   }
 };
@@ -243,7 +243,10 @@ export const AgentsPage: React.FC = () => {
                             {step.icon}
                           </div>
                           <h4 className="font-semibold text-sm mb-1">{step.agent}</h4>
-                          <p className="text-xs text-slate-600">{step.description}</p>
+                          <p className="text-xs text-slate-600 mb-2">{step.description}</p>
+                          <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border">
+                            {step.tech}
+                          </div>
                         </div>
                         {idx < workflow.steps.length - 1 && (
                           <ArrowRight className="w-5 h-5 text-slate-400 mx-2 animate-pulse" />

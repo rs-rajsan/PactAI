@@ -62,8 +62,8 @@ const TabsTrigger: React.FC<TabsTriggerProps> = ({ value: triggerValue, classNam
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all",
-        isActive ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900 hover:bg-slate-200",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all duration-200",
+        isActive ? "bg-blue-600 text-white shadow-lg ring-2 ring-blue-300" : "text-slate-600 hover:text-slate-900 hover:bg-slate-200",
         className
       )}
       onClick={() => onValueChange?.(triggerValue)}
