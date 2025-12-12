@@ -6,6 +6,8 @@ import { Loader } from '../ui/loader';
 interface DocumentUploadProps {
   onUploadComplete?: (result: UploadResult) => void;
   modelSelection?: string;
+  onWorkflowUpdate?: (status: any) => void;
+  onUploadStart?: () => void;
 }
 
 interface UploadResult {
@@ -18,7 +20,9 @@ interface UploadResult {
 
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   onUploadComplete,
-  modelSelection = "gemini-2.0-flash"
+  modelSelection = "gemini-2.0-flash",
+  onWorkflowUpdate,
+  onUploadStart
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -42,6 +46,20 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
     setIsUploading(true);
     setUploadResult(null);
+    onUploadStart?.();
+
+    // Start polling for workflow status
+    const pollWorkflow = setInterval(async () => {
+      try {
+        const workflowResponse = await fetch('/api/workflow/status');
+        if (workflowResponse.ok) {
+          const workflowData = await workflowResponse.json();
+          onWorkflowUpdate?.(workflowData);
+        }
+      } catch (e) {
+        // Ignore workflow polling errors
+      }
+    }, 500);
 
     try {
       const formData = new FormData();
@@ -74,6 +92,19 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
       if (onUploadComplete) {
         onUploadComplete(result);
       }
+      
+      // Final workflow status update
+      setTimeout(async () => {
+        try {
+          const workflowResponse = await fetch('/api/workflow/status');
+          if (workflowResponse.ok) {
+            const workflowData = await workflowResponse.json();
+            onWorkflowUpdate?.(workflowData);
+          }
+        } catch (e) {
+          // Ignore final workflow polling error
+        }
+      }, 1000);
 
     } catch (error) {
       console.error('Upload failed:', error);
@@ -84,6 +115,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         model_used: modelSelection
       });
     } finally {
+      clearInterval(pollWorkflow);
       setIsUploading(false);
     }
   }, [modelSelection, onUploadComplete]);

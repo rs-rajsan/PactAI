@@ -16,7 +16,7 @@ class ContractIntelligenceService:
         self.agent_manager = agent_manager
         self.repository = Neo4jContractRepository()
     
-    def analyze_contract_intelligence(self, contract_text: str, model: str = "gemini-2.0-flash") -> ContractIntelligence:
+    def analyze_contract_intelligence(self, contract_text: str, model: str = "gemini-2.0-flash", use_planning: bool = True) -> ContractIntelligence:
         """Perform complete contract intelligence analysis using multi-agent system"""
         
         start_time = time.time()
@@ -30,8 +30,8 @@ class ContractIntelligenceService:
             # Create multi-agent orchestrator with error handling
             try:
                 orchestrator = ContractIntelligenceAgentFactory.create_orchestrator(llm)
-                # Run multi-agent analysis
-                analysis_result = orchestrator.analyze_contract(contract_text)
+                # Run multi-agent analysis with optional planning
+                analysis_result = orchestrator.analyze_contract(contract_text, use_planning)
             except ImportError as ie:
                 logger.error(f"Import error in orchestrator: {ie}")
                 raise Exception(f"Intelligence system not properly configured: {ie}")
@@ -64,7 +64,7 @@ class ContractIntelligenceService:
                 processing_time=time.time() - start_time
             )
     
-    def analyze_contract_by_id(self, contract_id: str, model: str = "gemini-2.0-flash") -> Optional[ContractIntelligence]:
+    def analyze_contract_by_id(self, contract_id: str, model: str = "gemini-2.0-flash", use_planning: bool = True) -> Optional[ContractIntelligence]:
         """Analyze contract intelligence for an existing contract by ID"""
         
         try:
@@ -88,8 +88,8 @@ class ContractIntelligenceService:
                 logger.error(f"Contract data keys: {list(contract_data.keys())}")
                 return None
             
-            # Perform analysis
-            intelligence = self.analyze_contract_intelligence(contract_text, model)
+            # Perform analysis with optional planning
+            intelligence = self.analyze_contract_intelligence(contract_text, model, use_planning)
             
             # Store intelligence results back to database
             self._store_intelligence_results(contract_id, intelligence)

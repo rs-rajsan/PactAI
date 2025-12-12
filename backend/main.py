@@ -11,6 +11,7 @@ from backend.agent_manager import AgentManager
 from backend.routers.document_upload import router as document_router
 from backend.routers.contract_intelligence import router as intelligence_router
 from backend.routers.debug import router as debug_router
+from backend.agents.agent_workflow_tracker import get_current_workflow_status
 
 
 load_dotenv()
@@ -32,6 +33,30 @@ app.add_middleware(
 app.include_router(document_router)
 app.include_router(intelligence_router)
 app.include_router(debug_router)
+
+@app.get("/workflow/status")
+async def get_workflow_status():
+    """Get current multi-agent workflow status for executive dashboard"""
+    return get_current_workflow_status()
+
+@app.get("/planning/status")
+async def get_planning_status():
+    """Get autonomous planning agent status"""
+    from backend.agents.planning.planning_agent import PlanningAgentFactory
+    
+    planning_agent = PlanningAgentFactory.create_planning_agent()
+    return {
+        "agent_type": "Autonomous Planning & Reasoning Agent",
+        "capabilities": [
+            "Query Analysis & Decomposition",
+            "Execution Plan Generation", 
+            "Self-Reflection & Validation",
+            "Adaptive Strategy Selection",
+            "Performance Learning"
+        ],
+        "available_strategies": ["simple", "complex", "risk_focused", "compliance_focused"],
+        "execution_history_count": len(planning_agent.execution_history)
+    }
 
 
 @app.get("/")

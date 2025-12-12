@@ -20,7 +20,8 @@ repository = Neo4jContractRepository()
 @router.post("/contracts/{contract_id}/analyze")
 async def analyze_contract_intelligence(
     contract_id: str,
-    model: str = Query(default="gemini-2.0-flash", description="LLM model to use for analysis")
+    model: str = Query(default="gemini-2.0-flash", description="LLM model to use for analysis"),
+    use_planning: bool = Query(default=False, description="Use autonomous planning agent")
 ):
     """
     Perform comprehensive contract intelligence analysis using multi-agent system
@@ -33,8 +34,8 @@ async def analyze_contract_intelligence(
     try:
         logger.info(f"Starting intelligence analysis for contract: {contract_id}")
         
-        # Perform multi-agent analysis
-        intelligence = intelligence_service.analyze_contract_by_id(contract_id, model)
+        # Perform multi-agent analysis with optional planning
+        intelligence = intelligence_service.analyze_contract_by_id(contract_id, model, use_planning)
         
         if not intelligence:
             raise HTTPException(status_code=404, detail=f"Contract {contract_id} not found or has no content")

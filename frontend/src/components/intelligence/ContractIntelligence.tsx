@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertTriangle, CheckCircle, XCircle, Clock, Brain, FileText, Shield, Edit } from 'lucide-react';
+import { Clock, Brain, XCircle, FileText, AlertTriangle, Shield, Wifi, RefreshCw } from 'lucide-react';
+import { DetailModal } from './DetailModal';
+import { ClausesDetail } from './ClausesDetail';
+import { ViolationsDetail } from './ViolationsDetail';
+import { RiskDetail } from './RiskDetail';
+import { useModal } from '../../lib/useModal';
 
 interface ContractClause {
   clause_type: string;
@@ -28,36 +32,47 @@ interface RiskAssessment {
   recommendations: string[];
 }
 
-interface RedlineRecommendation {
-  original_text: string;
-  suggested_text: string;
-  justification: string;
-  priority: string;
-}
-
 interface IntelligenceResults {
   clauses: ContractClause[];
   violations: PolicyViolation[];
   risk_assessment: RiskAssessment;
-  redlines: RedlineRecommendation[];
+  redlines: any[];
 }
 
 interface ContractIntelligenceProps {
   contractId: string;
   model?: string;
+  onWorkflowUpdate?: (status: any) => void;
 }
 
 export const ContractIntelligence: React.FC<ContractIntelligenceProps> = ({ 
   contractId, 
-  model = 'gemini-2.0-flash' 
+  model = 'gemini-2.0-flash',
+  onWorkflowUpdate
 }) => {
   const [results, setResults] = useState<IntelligenceResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [networkError, setNetworkError] = useState(false);
+  const { openModal, closeModal, isOpen } = useModal();
 
   const analyzeContract = async () => {
     setLoading(true);
     setError(null);
+    setNetworkError(false);
+    
+    // Start polling for workflow status
+    const pollWorkflow = setInterval(async () => {
+      try {
+        const workflowResponse = await fetch('/api/workflow/status');
+        if (workflowResponse.ok) {
+          const workflowData = await workflowResponse.json();
+          onWorkflowUpdate?.(workflowData);
+        }
+      } catch (e) {
+        // Ignore workflow polling errors
+      }
+    }, 500);
     
     try {
       const response = await fetch(`/api/intelligence/contracts/${contractId}/analyze?model=${model}`, {
@@ -65,36 +80,107 @@ export const ContractIntelligence: React.FC<ContractIntelligenceProps> = ({
       });
       
       if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Contract not found. Please verify the contract ID.');
+        }
+        if (response.status >= 500) {
+          throw new Error('Server error. Please try again later.');
+        }
         throw new Error(`Analysis failed: ${response.statusText}`);
       }
       
       const data = await response.json();
+      
+      if (!data.results) {
+        throw new Error('No analysis results returned. The contract may be invalid or corrupted.');
+      }
+      
       setResults(data.results);
+      
+      // Final workflow status update
+      setTimeout(async () => {
+        try {
+          const workflowResponse = await fetch('/api/workflow/status');
+          if (workflowResponse.ok) {
+            const workflowData = await workflowResponse.json();
+            onWorkflowUpdate?.(workflowData);
+          }
+        } catch (e) {
+          // Ignore final workflow polling error
+        }
+      }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Analysis failed');
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setNetworkError(true);
+        setError('Network connection failed. Please check your internet connection.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Analysis failed');
+      }
     } finally {
+      clearInterval(pollWorkflow);
       setLoading(false);
     }
   };
 
   const getRiskColor = (level: string) => {
     switch (level.toUpperCase()) {
-      case 'CRITICAL': return 'bg-red-500';
-      case 'HIGH': return 'bg-orange-500';
-      case 'MEDIUM': return 'bg-yellow-500';
-      case 'LOW': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'CRITICAL': return 'bg-red-500 text-white';
+      case 'HIGH': return 'bg-orange-500 text-white';
+      case 'MEDIUM': return 'bg-yellow-500 text-white';
+      case 'LOW': return 'bg-green-500 text-white';
+      default: return 'bg-gray-500 text-white';
     }
   };
 
-  const getSeverityIcon = (severity: string) => {
-    switch (severity.toUpperCase()) {
-      case 'CRITICAL': return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'HIGH': return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-      case 'MEDIUM': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case 'LOW': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      default: return <Clock className="h-4 w-4 text-gray-500" />;
-    }
+  const getViolationSeverityColor = (violations: PolicyViolation[]) => {
+    if (!violations || violations.length === 0) return 'text-slate-600';
+    
+    const hasCritical = violations.some(v => v.severity.toUpperCase() === 'CRITICAL');
+    const hasHigh = violations.some(v => v.severity.toUpperCase() === 'HIGH');
+    
+    if (hasCritical) return 'text-red-600';
+    if (hasHigh) return 'text-orange-600';
+    return 'text-slate-600';
+  };
+
+  const renderEmptyResults = () => (
+    <Card className="border-slate-200 bg-slate-50">
+      <CardContent className="pt-6 text-center py-12">
+        <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-slate-600 mb-2">No Analysis Results</h3>
+        <p className="text-sm text-slate-500 mb-4">
+          The contract analysis returned no results. This may indicate the document is not a valid contract.
+        </p>
+        <Button variant="outline" onClick={analyzeContract}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Retry Analysis
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const renderNetworkError = () => (
+    <Card className="border-red-200 bg-red-50">
+      <CardContent className="pt-6 text-center py-12">
+        <Wifi className="h-12 w-12 text-red-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-red-600 mb-2">Connection Failed</h3>
+        <p className="text-sm text-red-700 mb-4">
+          Unable to connect to the analysis service. Please check your connection and try again.
+        </p>
+        <Button variant="outline" onClick={analyzeContract} className="border-red-300">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Retry Connection
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  const hasPartialResults = (results: IntelligenceResults) => {
+    return results && (
+      !results.clauses || results.clauses.length === 0 ||
+      !results.violations || 
+      !results.risk_assessment
+    );
   };
 
   return (
@@ -102,34 +188,46 @@ export const ContractIntelligence: React.FC<ContractIntelligenceProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">AI Analysis</h3>
-          <p className="text-sm text-gray-600">Contract {contractId}</p>
+          <h3 className="text-lg font-semibold text-slate-800">AI Analysis</h3>
+          <p className="text-sm text-slate-600">Contract {contractId}</p>
         </div>
-        <Button 
-          onClick={analyzeContract} 
-          disabled={loading}
-          className="flex items-center gap-2"
-        >
-          <Brain className="h-4 w-4" />
-          {loading ? 'Analyzing...' : 'Analyze'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={analyzeContract} 
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <Brain className="h-4 w-4" />
+            {loading ? 'Analyzing...' : 'Analyze'}
+          </Button>
+          <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border">
+            🧠 Planning Agent: OFF
+          </div>
+        </div>
       </div>
 
+      {/* Network Error State */}
+      {networkError && renderNetworkError()}
+
       {/* Error Display */}
-      {error && (
+      {error && !networkError && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-red-700">
+            <div className="flex items-center gap-2 text-red-700 mb-3">
               <XCircle className="h-4 w-4" />
-              <span>{error}</span>
+              <span className="font-medium">Analysis Error</span>
             </div>
+            <p className="text-sm text-red-600 mb-3">{error}</p>
+            <Button variant="outline" size="sm" onClick={analyzeContract}>
+              Try Again
+            </Button>
           </CardContent>
         </Card>
       )}
 
       {/* Loading State */}
       {loading && (
-        <Card>
+        <Card className="border-slate-200">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-blue-600">
               <Clock className="h-4 w-4 animate-spin" />
@@ -139,62 +237,164 @@ export const ContractIntelligence: React.FC<ContractIntelligenceProps> = ({
         </Card>
       )}
 
+      {/* Empty Results Fallback */}
+      {!loading && !error && results && 
+       (!results.clauses || results.clauses.length === 0) && 
+       (!results.violations || results.violations.length === 0) && 
+       !results.risk_assessment && renderEmptyResults()}
+
+      {/* Partial Results Warning */}
+      {results && hasPartialResults(results) && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-yellow-700">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="font-medium">Partial Analysis Results</span>
+            </div>
+            <p className="text-sm text-yellow-600 mt-1">
+              Some analysis components may have failed. Results shown are incomplete.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Results */}
-      {results && (
+      {results && results.risk_assessment && (
         <div className="space-y-4">
-          {/* Overview Cards */}
+          {/* Overview Cards - Clickable */}
           <div className="grid grid-cols-3 gap-4">
-            <Card>
+            <Card 
+              className="border-slate-200 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200"
+              onClick={() => openModal('risk')}
+            >
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Risk Score</CardTitle>
+                <CardTitle className="text-sm text-slate-600 flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Risk Score
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{results.risk_assessment.overall_risk_score}/100</div>
-                <Badge className={getRiskColor(results.risk_assessment.risk_level)}>
-                  {results.risk_assessment.risk_level}
+                <div className="text-2xl font-bold text-slate-800">
+                  {results.risk_assessment?.overall_risk_score || 0}/100
+                </div>
+                <Badge className={getRiskColor(results.risk_assessment?.risk_level || 'UNKNOWN')}>
+                  {results.risk_assessment?.risk_level || 'UNKNOWN'}
                 </Badge>
+                <p className="text-xs text-blue-600 mt-2 font-medium">Click for details →</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card 
+              className="border-slate-200 cursor-pointer hover:shadow-md hover:border-orange-300 transition-all duration-200"
+              onClick={() => openModal('violations')}
+            >
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Violations</CardTitle>
+                <CardTitle className="text-sm text-slate-600 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Violations
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{results.violations.length}</div>
+                <div className={`text-2xl font-bold ${getViolationSeverityColor(results.violations || [])}`}>
+                  {results.violations?.length || 0}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Policy violations found</p>
+                <p className="text-xs text-orange-600 mt-1 font-medium">Click for details →</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card 
+              className="border-slate-200 cursor-pointer hover:shadow-md hover:border-green-300 transition-all duration-200"
+              onClick={() => openModal('clauses')}
+            >
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Clauses</CardTitle>
+                <CardTitle className="text-sm text-slate-600 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Clauses
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{results.clauses.length}</div>
+                <div className="text-2xl font-bold text-slate-800">
+                  {results.clauses?.length || 0}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">Key clauses extracted</p>
+                <p className="text-xs text-green-600 mt-1 font-medium">Click for details →</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Critical Issues */}
-          {results.risk_assessment.critical_issues.length > 0 && (
-            <Card className="border-red-200">
+          {/* Critical Issues Preview */}
+          {results.risk_assessment?.critical_issues?.length > 0 && (
+            <Card className="border-red-200 bg-red-50">
               <CardHeader>
-                <CardTitle className="text-red-700">Critical Issues</CardTitle>
+                <CardTitle className="text-red-700 text-sm flex items-center gap-2">
+                  <XCircle className="h-4 w-4" />
+                  Critical Issues Detected
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2">
-                  {results.risk_assessment.critical_issues.map((issue, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <XCircle className="h-4 w-4 text-red-500" />
-                      <span className="text-sm">{issue}</span>
-                    </li>
-                  ))}
-                </ul>
+                <p className="text-sm text-red-800 mb-3">
+                  {results.risk_assessment.critical_issues.length} critical issues require immediate attention
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-red-300 text-red-700 hover:bg-red-100"
+                  onClick={() => openModal('risk')}
+                >
+                  Review Critical Issues
+                </Button>
               </CardContent>
             </Card>
           )}
         </div>
       )}
+
+      {/* Detail Modals with Contract ID */}
+      <DetailModal
+        isOpen={isOpen('clauses')}
+        onClose={closeModal}
+        title={`Contract Clauses Analysis (${results?.clauses?.length || 0} found)`}
+      >
+        {results?.clauses && results.clauses.length > 0 ? (
+          <ClausesDetail clauses={results.clauses} contractId={contractId} />
+        ) : (
+          <div className="text-center py-8">
+            <FileText className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-600">No clauses were extracted from this contract.</p>
+          </div>
+        )}
+      </DetailModal>
+
+      <DetailModal
+        isOpen={isOpen('violations')}
+        onClose={closeModal}
+        title={`Policy Violations Review (${results?.violations?.length || 0} found)`}
+      >
+        {results?.violations && results.violations.length > 0 ? (
+          <ViolationsDetail violations={results.violations} contractId={contractId} />
+        ) : (
+          <div className="text-center py-8">
+            <AlertTriangle className="h-12 w-12 text-green-400 mx-auto mb-4" />
+            <p className="text-slate-600">No policy violations detected in this contract.</p>
+          </div>
+        )}
+      </DetailModal>
+
+      <DetailModal
+        isOpen={isOpen('risk')}
+        onClose={closeModal}
+        title="Comprehensive Risk Assessment"
+      >
+        {results?.risk_assessment ? (
+          <RiskDetail riskAssessment={results.risk_assessment} contractId={contractId} />
+        ) : (
+          <div className="text-center py-8">
+            <Shield className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-600">Risk assessment data is not available.</p>
+          </div>
+        )}
+      </DetailModal>
     </div>
   );
 };

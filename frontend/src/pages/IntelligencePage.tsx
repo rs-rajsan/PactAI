@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DocumentUpload } from '../components/upload/DocumentUpload';
 import { ContractIntelligence } from '../components/intelligence/ContractIntelligence';
+import { AgentWorkflowTracker } from '../components/workflow/AgentWorkflowTracker';
 import { Card } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
@@ -15,9 +16,22 @@ interface UploadResult {
 export const IntelligencePage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [workflowStatus, setWorkflowStatus] = useState<any>(null);
+  const [showWorkflow, setShowWorkflow] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleUploadComplete = (result: UploadResult) => {
     setUploadResult(result);
+    setShowWorkflow(true);
+    setIsUploading(false);
+  };
+
+  const handleUploadStart = () => {
+    setIsUploading(true);
+  };
+
+  const handleWorkflowUpdate = (status: any) => {
+    setWorkflowStatus(status);
   };
 
   return (
@@ -51,6 +65,8 @@ export const IntelligencePage: React.FC = () => {
         </div>
       </div>
 
+
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {/* Upload Section */}
@@ -66,7 +82,21 @@ export const IntelligencePage: React.FC = () => {
             <DocumentUpload 
               onUploadComplete={handleUploadComplete}
               modelSelection={selectedModel}
+              onWorkflowUpdate={handleWorkflowUpdate}
+              onUploadStart={handleUploadStart}
             />
+            
+            {/* PDF Processing Workflow */}
+            {(workflowStatus?.agent_executions?.length > 0 || isUploading || uploadResult) && (
+              <div className="mt-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-2">🤖 PDF Processing Agent</h4>
+                  <div className="text-xs text-blue-600">
+                    {isUploading ? '⏳ Processing PDF...' : '✅ PDF processed successfully'}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -81,10 +111,25 @@ export const IntelligencePage: React.FC = () => {
               Comprehensive AI analysis including risk assessment, clause extraction, and compliance review.
             </p>
             {uploadResult?.contract_id ? (
-              <ContractIntelligence 
-                contractId={uploadResult.contract_id}
-                model={selectedModel}
-              />
+              <>
+                {/* Intelligence Analysis Workflow */}
+                {workflowStatus && workflowStatus.agent_executions?.length > 0 && (
+                  <div className="mb-4">
+                    <AgentWorkflowTracker 
+                      workflowStatus={{
+                        ...workflowStatus,
+                        agent_executions: workflowStatus.agent_executions.filter((e: any) => e.agent_name !== 'PDF Processing Agent')
+                      }}
+                      isVisible={true}
+                    />
+                  </div>
+                )}
+                <ContractIntelligence 
+                  contractId={uploadResult.contract_id}
+                  model={selectedModel}
+                  onWorkflowUpdate={handleWorkflowUpdate}
+                />
+              </>
             ) : (
               <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-lg">
                 <div className="text-slate-400 text-4xl mb-3">📄</div>

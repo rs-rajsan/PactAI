@@ -1,6 +1,7 @@
 from backend.domain.entities import DocumentProcessingRequest
 from backend.agents.pdf_processing_agent import PDFAgentFactory
 from backend.domain.value_objects import ProcessingResult, ProcessingStatus
+from backend.agents.agent_workflow_tracker import workflow_tracker
 import os
 import logging
 
@@ -68,6 +69,16 @@ class DocumentProcessingService:
     def _process_with_agent(self, pdf_agent, request: DocumentProcessingRequest) -> dict:
         """Process document using PDF agent with structured output"""
         
+        # Start workflow tracking
+        workflow_tracker.start_workflow()
+        
+        # Track PDF processing agent
+        execution = workflow_tracker.start_agent(
+            "PDF Processing Agent",
+            "Extract text and analyze contract structure from PDF",
+            f"PDF file: {request.filename}"
+        )
+        
         # Create initial state
         initial_state = {
             "file_path": request.file_path,
@@ -88,18 +99,30 @@ class DocumentProcessingService:
                 # Fallback: check if we have contract_data but no result
                 contract_data = final_state.get("contract_data")
                 if contract_data and contract_data.is_contract:
+                    workflow_tracker.error_agent(execution, "Processing completed but storage failed")
+                    workflow_tracker.complete_workflow()
                     return {
                         "status": "error",
                         "filename": request.filename,
                         "final_result": "Processing completed but storage failed",
                         "contract_id": None
                     }
+                workflow_tracker.error_agent(execution, "No processing result returned")
+                workflow_tracker.complete_workflow()
                 return {
                     "status": "error",
                     "filename": request.filename,
                     "final_result": "No processing result returned",
                     "contract_id": None
                 }
+            
+            # Complete agent tracking
+            if processing_result and processing_result.contract_id:
+                workflow_tracker.complete_agent(execution, f"Contract stored with ID: {processing_result.contract_id}")
+            else:
+                workflow_tracker.error_agent(execution, "Failed to store contract")
+            
+            workflow_tracker.complete_workflow()
             
             # Convert structured result to response format
             return {
@@ -111,6 +134,8 @@ class DocumentProcessingService:
             }
             
         except Exception as e:
+            workflow_tracker.error_agent(execution, f"Processing failed: {str(e)}")
+            workflow_tracker.complete_workflow()
             logger.error(f"Agent processing failed: {e}")
             return {
                 "status": "error",
