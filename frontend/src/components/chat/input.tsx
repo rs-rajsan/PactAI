@@ -48,6 +48,9 @@ export function ChatInput() {
         addMessage(aiMessage);
         console.log({ model, prompt, history: history.current });
         
+        // Clear the form after submission
+        event.target.reset();
+        
         await fetchEventSource('/api/run/', {
             method: 'POST',
             headers: {
