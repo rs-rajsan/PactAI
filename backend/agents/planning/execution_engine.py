@@ -57,6 +57,7 @@ class StepExecutor:
     
     async def _execute_step_with_retry(self, step: ExecutionStep, context: Dict[str, Any]) -> ExecutionResult:
         """Execute step with retry mechanism"""
+        logger.info(f"🔧 STEP EXEC 1: Starting step {step.step_id} with retry mechanism")
         max_retries = 2
         start_time = datetime.now()
         
@@ -73,6 +74,8 @@ class StepExecutor:
                     logger.info(f"Retrying step {step.step_id}, attempt {attempt + 1}")
                     await asyncio.sleep(attempt * 0.5)  # Exponential backoff
                 
+                logger.info(f"🔧 STEP EXEC 2: Executing {step.step_type} for {step.step_id}")
+                
                 if step.step_type == StepType.EXTRACT_CLAUSES:
                     result = await self._execute_clause_extraction(step, context)
                 elif step.step_type == StepType.CHECK_POLICIES:
@@ -85,6 +88,8 @@ class StepExecutor:
                     result = await self._execute_validation(step, context)
                 else:
                     raise ValueError(f"Unknown step type: {step.step_type}")
+                
+                logger.info(f"🔧 STEP EXEC 3: Step {step.step_id} execution completed successfully")
                 
                 execution_time = int((datetime.now() - start_time).total_seconds() * 1000)
                 workflow_tracker.complete_agent(execution, self._get_output_summary(result))
@@ -214,7 +219,8 @@ class PlanExecutionEngine:
     
     async def execute_plan(self, plan: ExecutionPlan, contract_text: str) -> Dict[str, Any]:
         """Execute the complete analysis plan"""
-        logger.info(f"🚀 Executing plan {plan.plan_id} with {len(plan.steps)} steps")
+        logger.info(f"🚀 EXEC STEP 1: Starting plan execution {plan.plan_id} with {len(plan.steps)} steps")
+        logger.info(f"🚀 EXEC STEP 2: Contract text length: {len(contract_text)} characters")
         
         # Initialize execution context
         self.execution_context = {
@@ -223,26 +229,33 @@ class PlanExecutionEngine:
             "execution_start": datetime.now()
         }
         
-        # Track plan execution
-        workflow_tracker.start_workflow()
+        # Don't reset workflow tracker - planning agent already started it
+        # workflow_tracker.start_workflow()
         
         step_results: Dict[str, ExecutionResult] = {}
         
         try:
             # Execute steps respecting dependencies
-            for step in plan.steps:
+            logger.info(f"🚀 EXEC STEP 3: Starting step execution loop")
+            for i, step in enumerate(plan.steps):
+                logger.info(f"🚀 EXEC STEP 4.{i+1}: Processing step {step.step_id} ({step.step_type})")
+                
                 # Wait for dependencies
                 await self._wait_for_dependencies(step, step_results)
+                logger.info(f"🚀 EXEC STEP 4.{i+1}a: Dependencies satisfied for {step.step_id}")
                 
                 # Execute step
+                logger.info(f"🚀 EXEC STEP 4.{i+1}b: Executing step {step.step_id}")
                 result = await self.step_executor.execute_step(step, self.execution_context)
                 step_results[step.step_id] = result
+                logger.info(f"🚀 EXEC STEP 4.{i+1}c: Step {step.step_id} completed, success: {result.success}")
                 
                 # Update context with results
                 if result.success:
                     self._update_context_with_result(step, result)
+                    logger.info(f"🚀 EXEC STEP 4.{i+1}d: Context updated for {step.step_id}")
                 else:
-                    logger.error(f"Step {step.step_id} failed: {result.error_message}")
+                    logger.error(f"🚀 EXEC ERROR: Step {step.step_id} failed: {result.error_message}")
                     # Continue execution for non-critical failures
             
             # Complete workflow tracking

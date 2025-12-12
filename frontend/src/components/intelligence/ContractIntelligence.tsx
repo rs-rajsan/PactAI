@@ -43,12 +43,14 @@ interface ContractIntelligenceProps {
   contractId: string;
   model?: string;
   onWorkflowUpdate?: (status: any) => void;
+  onAnalysisComplete?: (contractId: string, riskScore?: number, riskLevel?: string) => void;
 }
 
 export const ContractIntelligence: React.FC<ContractIntelligenceProps> = ({ 
   contractId, 
   model = 'gemini-2.0-flash',
-  onWorkflowUpdate
+  onWorkflowUpdate,
+  onAnalysisComplete
 }) => {
   const [results, setResults] = useState<IntelligenceResults | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,6 +98,11 @@ export const ContractIntelligence: React.FC<ContractIntelligenceProps> = ({
       }
       
       setResults(data.results);
+      
+      // Report analysis completion with full results
+      if (data.results?.risk_assessment) {
+        onAnalysisComplete?.(contractId, data.results.risk_assessment.overall_risk_score, data.results.risk_assessment.risk_level, data.results);
+      }
       
       // Final workflow status update
       setTimeout(async () => {
@@ -191,19 +198,14 @@ export const ContractIntelligence: React.FC<ContractIntelligenceProps> = ({
           <h3 className="text-lg font-semibold text-slate-800">AI Analysis</h3>
           <p className="text-sm text-slate-600">Contract {contractId}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={analyzeContract} 
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <Brain className="h-4 w-4" />
-            {loading ? 'Analyzing...' : 'Analyze'}
-          </Button>
-          <div className="text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded border">
-            🧠 Planning Agent: OFF
-          </div>
-        </div>
+        <Button 
+          onClick={analyzeContract} 
+          disabled={loading}
+          className="flex items-center gap-2"
+        >
+          <Brain className="h-4 w-4" />
+          {loading ? 'Analyzing...' : 'Analyze'}
+        </Button>
       </div>
 
       {/* Network Error State */}

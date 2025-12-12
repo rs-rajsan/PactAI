@@ -130,7 +130,9 @@ class PlanningAgent:
     def __init__(self):
         self.strategies = {
             PlanningStrategy.SIMPLE: SimplePlanningStrategy(),
-            PlanningStrategy.COMPLEX: ComplexPlanningStrategy()
+            PlanningStrategy.COMPLEX: ComplexPlanningStrategy(),
+            PlanningStrategy.RISK_FOCUSED: ComplexPlanningStrategy(),  # Use complex for risk-focused
+            PlanningStrategy.COMPLIANCE_FOCUSED: ComplexPlanningStrategy()  # Use complex for compliance-focused
         }
         self.query_analyzer = QueryAnalyzer()
         self.execution_history: List[ExecutionPlan] = []

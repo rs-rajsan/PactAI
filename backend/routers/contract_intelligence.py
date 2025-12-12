@@ -21,7 +21,7 @@ repository = Neo4jContractRepository()
 async def analyze_contract_intelligence(
     contract_id: str,
     model: str = Query(default="gemini-2.0-flash", description="LLM model to use for analysis"),
-    use_planning: bool = Query(default=False, description="Use autonomous planning agent")
+    use_planning: bool = Query(default=True, description="Use autonomous planning agent")
 ):
     """
     Perform comprehensive contract intelligence analysis using multi-agent system

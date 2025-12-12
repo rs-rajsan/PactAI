@@ -3,6 +3,7 @@ import { ThemeProvider } from './components/theme-provider';
 import { Navigation } from './components/Navigation';
 import { ChatPage } from './pages/ChatPage';
 import { IntelligencePage } from './pages/IntelligencePage';
+import { ContractHistoryProvider } from './contexts/ContractHistoryContext';
 import { useRouter } from './lib/useRouter';
 import './App.css';
 
@@ -21,14 +22,16 @@ function App() {
   };
 
   return (
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <div className="min-h-screen bg-slate-50">
-        <div className="mx-auto max-w-7xl p-6">
-          <Navigation currentPage={currentPage} onNavigate={navigate} />
-          {renderPage()}
+    <ContractHistoryProvider>
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+        <div className="min-h-screen bg-slate-50">
+          <div className="mx-auto max-w-7xl p-6">
+            <Navigation currentPage={currentPage} onNavigate={navigate} />
+            {renderPage()}
+          </div>
         </div>
-      </div>
-    </ThemeProvider>
+      </ThemeProvider>
+    </ContractHistoryProvider>
   );
 }
 

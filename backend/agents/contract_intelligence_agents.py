@@ -155,7 +155,19 @@ class IntelligenceOrchestrator:
         try:
             if use_planning:
                 try:
-                    return self._analyze_with_planning(contract_text)
+                    # Use asyncio.run with proper event loop handling
+                    import asyncio
+                    try:
+                        # Try to get current loop
+                        loop = asyncio.get_running_loop()
+                        # If we're in an event loop, create a task
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(asyncio.run, self._analyze_with_planning(contract_text))
+                            return future.result()
+                    except RuntimeError:
+                        # No event loop running, safe to use asyncio.run
+                        return asyncio.run(self._analyze_with_planning(contract_text))
                 except Exception as planning_error:
                     logger.error(f"Planning agent failed: {planning_error}, falling back to traditional workflow")
                     return self._analyze_traditional(contract_text)
@@ -172,23 +184,55 @@ class IntelligenceOrchestrator:
                 "processing_complete": False
             }
     
-    def _analyze_with_planning(self, contract_text: str) -> dict:
+    async def _analyze_with_planning(self, contract_text: str) -> dict:
         """Analyze contract using autonomous planning agent"""
-        logger.info("🧠 Using Autonomous Planning & Reasoning Agent")
+        logger.info("🧠 STEP 1: Starting Planning Agent Analysis")
         
-        # Create execution plan based on contract analysis requirements
-        query = "Perform comprehensive contract analysis including clause extraction, policy compliance, risk assessment, and redline generation"
-        execution_plan = self.planning_agent.create_execution_plan(query)
-        
-        # Execute the planned workflow
-        import asyncio
-        results = asyncio.run(self.execution_engine.execute_plan(execution_plan, contract_text))
-        
-        # Provide feedback to planning agent for learning
-        success_rate = 1.0 if results.get("processing_complete") else 0.0
-        self.planning_agent.adapt_plan_from_feedback(execution_plan.plan_id, {"success_rate": success_rate})
-        
-        return results
+        try:
+            # Step 1: Track planning agent
+            planning_execution = workflow_tracker.start_agent(
+                "Autonomous Planning Agent",
+                "Analyze query and create optimal execution plan",
+                "Contract analysis requirements"
+            )
+            
+            # Step 2: Create execution plan
+            logger.info("🧠 STEP 2: Creating execution plan")
+            query = "Perform comprehensive contract analysis including clause extraction, policy compliance, risk assessment, and redline generation"
+            execution_plan = self.planning_agent.create_execution_plan(query)
+            logger.info(f"🧠 STEP 3: Plan created with {len(execution_plan.steps)} steps")
+            
+            # Complete planning agent tracking with detailed plan info
+            step_details = " → ".join([f"{step.step_type.value.replace('_', ' ').title()}" for step in execution_plan.steps])
+            workflow_tracker.complete_agent(
+                planning_execution, 
+                f"Created {execution_plan.strategy} plan: {step_details} (Est: {execution_plan.estimated_duration}s)"
+            )
+            
+            # Step 2: Execute the planned workflow
+            logger.info("🧠 STEP 4: Starting plan execution")
+            results = await self.execution_engine.execute_plan(execution_plan, contract_text)
+            logger.info(f"🧠 STEP 5: Plan execution completed: {results.get('processing_complete')}")
+            
+            # Step 3: Provide feedback
+            logger.info("🧠 STEP 6: Providing feedback to planning agent")
+            success_rate = 1.0 if results.get("processing_complete") else 0.0
+            self.planning_agent.adapt_plan_from_feedback(execution_plan.plan_id, {"success_rate": success_rate})
+            
+            logger.info("🧠 STEP 7: Planning agent analysis completed successfully")
+            return results
+            
+        except Exception as e:
+            # Mark planning agent as failed if we have the execution reference
+            try:
+                workflow_tracker.error_agent(planning_execution, f"Planning failed: {str(e)}")
+            except:
+                pass  # planning_execution might not be defined if error occurred early
+            
+            logger.error(f"🧠 PLANNING AGENT ERROR at step: {e}")
+            import traceback
+            logger.error(f"🧠 Full traceback: {traceback.format_exc()}")
+            raise e
     
     def _analyze_traditional(self, contract_text: str) -> dict:
         """Traditional workflow analysis (fallback)"""

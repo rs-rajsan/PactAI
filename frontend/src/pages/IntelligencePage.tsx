@@ -4,6 +4,7 @@ import { ContractIntelligence } from '../components/intelligence/ContractIntelli
 import { AgentWorkflowTracker } from '../components/workflow/AgentWorkflowTracker';
 import { Card } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { useContractHistory } from '../contexts/ContractHistoryContext';
 
 interface UploadResult {
   filename: string;
@@ -19,11 +20,23 @@ export const IntelligencePage: React.FC = () => {
   const [workflowStatus, setWorkflowStatus] = useState<any>(null);
   const [showWorkflow, setShowWorkflow] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const { contracts, addContract, updateContract, selectedContractId, setSelectedContract } = useContractHistory();
 
   const handleUploadComplete = (result: UploadResult) => {
     setUploadResult(result);
     setShowWorkflow(true);
     setIsUploading(false);
+    
+    // Add to contract history
+    if (result.contract_id) {
+      addContract({
+        contract_id: result.contract_id,
+        filename: result.filename,
+        upload_date: new Date().toISOString(),
+        model_used: result.model_used,
+        analysis_completed: false
+      });
+    }
   };
 
   const handleUploadStart = () => {
@@ -32,6 +45,15 @@ export const IntelligencePage: React.FC = () => {
 
   const handleWorkflowUpdate = (status: any) => {
     setWorkflowStatus(status);
+  };
+
+  const handleAnalysisComplete = (contractId: string, riskScore?: number, riskLevel?: string, results?: any) => {
+    updateContract(contractId, {
+      analysis_completed: true,
+      risk_score: riskScore,
+      risk_level: riskLevel,
+      analysis_results: results
+    });
   };
 
   return (
@@ -66,6 +88,50 @@ export const IntelligencePage: React.FC = () => {
       </div>
 
 
+
+      {/* Contract History */}
+      {contracts.length > 0 && (
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200 mb-8">
+          <h2 className="text-xl font-semibold text-slate-800 mb-4">Recent Contracts</h2>
+          <div className="space-y-2">
+            {contracts.slice(0, 5).map((contract) => (
+              <div 
+                key={contract.contract_id} 
+                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100"
+                onClick={() => {
+                  setSelectedContract(contract.contract_id);
+                  setUploadResult({
+                    filename: contract.filename,
+                    status: 'success',
+                    contract_id: contract.contract_id,
+                    details: 'Contract loaded from history',
+                    model_used: contract.model_used
+                  });
+                }}
+              >
+                <div>
+                  <p className="font-medium text-slate-800">{contract.filename}</p>
+                  <p className="text-sm text-slate-500">
+                    {new Date(contract.upload_date).toLocaleDateString()} • {contract.model_used}
+                    {contract.analysis_completed && contract.risk_level && (
+                      <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                        contract.risk_level === 'HIGH' || contract.risk_level === 'CRITICAL' 
+                          ? 'bg-red-100 text-red-700'
+                          : contract.risk_level === 'MEDIUM'
+                          ? 'bg-yellow-100 text-yellow-700' 
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {contract.risk_level} Risk
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="text-sm text-slate-400">Click to analyze</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -128,6 +194,7 @@ export const IntelligencePage: React.FC = () => {
                   contractId={uploadResult.contract_id}
                   model={selectedModel}
                   onWorkflowUpdate={handleWorkflowUpdate}
+                  onAnalysisComplete={handleAnalysisComplete}
                 />
               </>
             ) : (
