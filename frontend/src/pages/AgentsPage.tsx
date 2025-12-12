@@ -24,8 +24,25 @@ import {
   BarChart3,
   CheckCircle,
   Clock,
-  Zap
+  Zap,
+  Users
 } from 'lucide-react';
+
+const getAgentTools = (agentId: string): string => {
+  const toolMappings: Record<string, string> = {
+    'pdf-processing': 'PDFTextExtractorTool, ContractAnalyzerTool, DataValidatorTool',
+    'planning': 'ContractSearchTool, EnhancedContractSearchTool (for analysis planning)',
+    'document-embedding': 'GoogleGenerativeAIEmbeddings, DocumentEmbeddingStrategy, Neo4j Vector Storage',
+    'clause-extraction': 'ClauseDetectorTool, PolicyCheckerTool, ContractAnalyzerTool',
+    'relationship-embedding': 'RelationshipEmbeddingStrategy, Neo4j Graph Queries, Entity Extraction Tools',
+    'policy-compliance': 'PolicyCheckerTool, CompanyPolicyRules, ViolationDetector',
+    'risk-assessment': 'RiskCalculatorTool, PolicyViolationAnalyzer, RiskScoring',
+    'redline-generation': 'RedlineGeneratorTool, PolicyTemplates, TextDiffAlgorithms',
+    'embedding-validator': 'EmbeddingValidator, DimensionChecker, ConsistencyValidator',
+    'migration-agent': 'Neo4jMigrator, SchemaUpgrader, BatchProcessor'
+  };
+  return toolMappings[agentId] || 'ContractSearchTool, EnhancedContractSearchTool';
+};
 
 const agents = [
   {
@@ -33,10 +50,10 @@ const agents = [
     name: 'PDF Processing Agent',
     icon: <FileText className="w-6 h-6" />,
     role: 'Document Ingestion',
-    description: 'Extracts text and metadata from uploaded PDF contracts',
-    capabilities: ['PDF text extraction', 'Contract structure analysis', 'Metadata extraction', 'File validation'],
+    description: 'Extracts text and metadata from uploaded PDF contracts with enhanced multi-level processing',
+    capabilities: ['PDF text extraction', 'OCR processing', 'Contract structure analysis', 'Metadata extraction', 'Multi-level embedding generation'],
     input: 'Raw PDF files',
-    output: 'Structured contract text + metadata',
+    output: 'Structured contract text + metadata + embeddings',
     color: 'bg-blue-500'
   },
   {
@@ -51,15 +68,37 @@ const agents = [
     color: 'bg-purple-500'
   },
   {
+    id: 'document-embedding',
+    name: 'Document Embedding Agent',
+    icon: <FileText className="w-6 h-6" />,
+    role: 'Semantic Processing',
+    description: 'Generates hierarchical embeddings for full documents and sections using Google AI',
+    capabilities: ['Document-level embeddings', 'Section identification', 'Hierarchical processing', 'Semantic representation'],
+    input: 'Contract text + metadata',
+    output: 'Document & section embeddings (768-dim vectors)',
+    color: 'bg-cyan-500'
+  },
+  {
     id: 'clause-extraction',
     name: 'Clause Extraction Agent',
     icon: <Bot className="w-6 h-6" />,
     role: 'Content Analysis',
-    description: 'Identifies and extracts key contract clauses with confidence scores',
-    capabilities: ['Payment terms detection', 'Liability clause extraction', 'IP ownership identification', 'Termination clause analysis'],
+    description: 'Identifies and extracts 41 CUAD clause types with embeddings and confidence scores',
+    capabilities: ['41 CUAD clause types', 'Pattern matching', 'Confidence scoring', 'Clause embeddings', 'Position tracking'],
     input: 'Contract text',
-    output: 'Structured clause data with confidence scores',
+    output: 'Structured clause data + embeddings + confidence scores',
     color: 'bg-green-500'
+  },
+  {
+    id: 'relationship-embedding',
+    name: 'Relationship Embedding Agent',
+    icon: <Users className="w-6 h-6" />,
+    role: 'Relationship Analysis',
+    description: 'Extracts and embeds party relationships and governing law contexts',
+    capabilities: ['Party role extraction', 'Governing law identification', 'Relationship context embedding', 'Entity linking'],
+    input: 'Contract text + entities',
+    output: 'Relationship embeddings + context metadata',
+    color: 'bg-teal-500'
   },
   {
     id: 'policy-compliance',
@@ -93,6 +132,28 @@ const agents = [
     input: 'Policy violations',
     output: 'Redline suggestions with priorities',
     color: 'bg-indigo-500'
+  },
+  {
+    id: 'embedding-validator',
+    name: 'Embedding Validation Agent',
+    icon: <CheckCircle className="w-6 h-6" />,
+    role: 'Quality Assurance',
+    description: 'Validates embedding quality, consistency, and dimensional accuracy',
+    capabilities: ['Dimension validation', 'Consistency checks', 'Duplicate detection', 'Quality scoring'],
+    input: 'Generated embeddings',
+    output: 'Validation results + quality metrics',
+    color: 'bg-emerald-500'
+  },
+  {
+    id: 'migration-agent',
+    name: 'Database Migration Agent',
+    icon: <BarChart3 className="w-6 h-6" />,
+    role: 'Schema Management',
+    description: 'Manages database schema upgrades and contract migration to enhanced embeddings',
+    capabilities: ['Schema upgrades', 'Batch migration', 'Rollback support', 'Data integrity checks'],
+    input: 'Migration commands',
+    output: 'Migration status + statistics',
+    color: 'bg-slate-500'
   }
 ];
 
@@ -106,8 +167,8 @@ const workflows = {
       { agent: 'PDF Processing Agent', description: 'Text extraction and OCR processing', icon: <FileText className="w-5 h-5" />, tech: 'PyPDF2, pdfplumber, Tesseract OCR' },
       { agent: 'Clause Extraction Agent', description: 'Extract 41 CUAD clause types', icon: <Bot className="w-5 h-5" />, tech: 'LangChain, Gemini/OpenAI LLMs, spaCy NLP' },
       { agent: 'Knowledge Graph Storage', description: 'Store in Neo4j with relationships', icon: <CheckCircle className="w-5 h-5" />, tech: 'Neo4j Aura, py2neo driver, Cypher queries' },
-      { agent: 'Vector Database Indexing', description: 'Create embeddings for semantic search', icon: <Zap className="w-5 h-5" />, tech: 'OpenAI embeddings, FAISS/Chroma vector DB' },
-      { agent: 'Dataset Integration', description: 'Add to searchable contract corpus', icon: <BarChart3 className="w-5 h-5" />, tech: 'PostgreSQL metadata, Redis caching' }
+      { agent: 'Multi-Level Embedding Generation', description: 'Create hierarchical embeddings for semantic search', icon: <Zap className="w-5 h-5" />, tech: 'Google text-embedding-004, Neo4j vector indexing' },
+      { agent: 'Dataset Integration', description: 'Add to searchable contract corpus with embeddings', icon: <BarChart3 className="w-5 h-5" />, tech: 'Neo4j graph storage, vector similarity indexing' }
     ]
   },
   chat: {
@@ -119,6 +180,29 @@ const workflows = {
       { agent: 'Search Processing', description: 'Query analysis and vector search', icon: <Bot className="w-5 h-5" />, tech: 'LangChain query processing, similarity search' },
       { agent: 'Contract Retrieval', description: 'Semantic matching from Neo4j database', icon: <FileText className="w-5 h-5" />, tech: 'Neo4j graph traversal, vector similarity' },
       { agent: 'Response Generation', description: 'Contextual answer with contract references', icon: <CheckCircle className="w-5 h-5" />, tech: 'LangChain RAG, Gemini/Claude LLMs' }
+    ]
+  },
+  search: {
+    title: 'Enhanced Multi-Level Search',
+    icon: <MessageSquare className="w-8 h-8" />,
+    description: 'Advanced semantic search across document, section, clause, and relationship levels',
+    steps: [
+      { agent: 'Query Processing', description: 'Analyze search intent and level', icon: <Brain className="w-5 h-5" />, tech: 'Query analysis, intent classification' },
+      { agent: 'Embedding Generation', description: 'Convert query to 768-dim vector', icon: <Zap className="w-5 h-5" />, tech: 'Google text-embedding-004 API' },
+      { agent: 'Multi-Level Search', description: 'Search documents, sections, clauses, relationships', icon: <BarChart3 className="w-5 h-5" />, tech: 'Neo4j vector similarity, cosine distance' },
+      { agent: 'Result Ranking', description: 'Rank and merge results by relevance', icon: <CheckCircle className="w-5 h-5" />, tech: 'Similarity scoring, result fusion' }
+    ]
+  },
+  orchestration: {
+    title: 'Embedding Orchestration Pipeline',
+    icon: <Zap className="w-8 h-8" />,
+    description: 'Multi-agent embedding generation and validation workflow',
+    steps: [
+      { agent: 'Document Embedding Agent', description: 'Generate document & section embeddings', icon: <FileText className="w-5 h-5" />, tech: 'Google text-embedding-004, hierarchical processing' },
+      { agent: 'Clause Embedding Agent', description: 'Extract & embed 41 CUAD clause types', icon: <Bot className="w-5 h-5" />, tech: 'Pattern matching, confidence scoring' },
+      { agent: 'Relationship Embedding Agent', description: 'Extract & embed party relationships', icon: <Users className="w-5 h-5" />, tech: 'Entity extraction, context embedding' },
+      { agent: 'Embedding Validator', description: 'Validate quality & consistency', icon: <CheckCircle className="w-5 h-5" />, tech: 'Dimension checks, similarity validation' },
+      { agent: 'Neo4j Storage', description: 'Store multi-level embeddings', icon: <BarChart3 className="w-5 h-5" />, tech: 'Graph database, vector indexing' }
     ]
   },
   analysis: {
@@ -202,6 +286,13 @@ export const AgentsPage: React.FC = () => {
                           <p className="text-slate-600">{agent.output}</p>
                         </div>
                       </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-sm mb-2">Tools Used</h4>
+                        <div className="bg-slate-50 rounded p-2 text-xs text-slate-600">
+                          {getAgentTools(agent.id)}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -260,7 +351,8 @@ export const AgentsPage: React.FC = () => {
                       <Badge variant="secondary">
                         {key === 'storage' && 'Automatic: Happens when you upload any document'}
                         {key === 'chat' && 'Try it: Go to Contract Search'}
-
+                        {key === 'search' && 'Try it: Use enhanced search with granular filters'}
+                        {key === 'orchestration' && 'Automatic: Multi-level embedding generation'}
                         {key === 'analysis' && 'Try it: Upload PDF → Click Analyze'}
                       </Badge>
                     </div>
@@ -295,59 +387,156 @@ export const AgentsPage: React.FC = () => {
                     </div>
                     <div className="flex justify-between">
                       <span>Database:</span>
-                      <Badge>Neo4j Aura</Badge>
+                      <Badge>Neo4j Aura + Vector Search</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Embeddings:</span>
+                      <Badge>Google text-embedding-004</Badge>
                     </div>
                     <div className="flex justify-between">
                       <span>LLM Providers:</span>
                       <Badge>Gemini, OpenAI, Claude</Badge>
                     </div>
+                    <div className="flex justify-between">
+                      <span>PDF Processing:</span>
+                      <Badge>PyPDF2 + pdfplumber + OCR</Badge>
+                    </div>
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="font-semibold mb-3">Design Patterns</h3>
+                  <h3 className="font-semibold mb-3">Enhanced Frontend Components</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Architecture:</span>
-                      <Badge variant="outline">Multi-Agent System</Badge>
+                      <span>Search Interface:</span>
+                      <Badge variant="outline">Multi-Level Search Selector</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span>Orchestration:</span>
-                      <Badge variant="outline">LangGraph Workflows</Badge>
+                      <span>Clause Filters:</span>
+                      <Badge variant="outline">41 CUAD Type Checkboxes</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span>State Management:</span>
-                      <Badge variant="outline">TypedDict + Context</Badge>
+                      <span>Section Filters:</span>
+                      <Badge variant="outline">6 Section Type Categories</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span>Error Handling:</span>
-                      <Badge variant="outline">Circuit Breaker + Retry</Badge>
+                      <span>Results Display:</span>
+                      <Badge variant="outline">Multi-Level Result Visualization</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span>Principles:</span>
-                      <Badge variant="outline">SOLID + DRY</Badge>
+                      <span>API Integration:</span>
+                      <Badge variant="outline">Enhanced Search Service</Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold mb-3">Enhanced Backend Features</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Multi-Level Embeddings:</span>
+                      <Badge variant="outline">Document + Section + Clause + Relationship</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>CUAD Compliance:</span>
+                      <Badge variant="outline">41 Legal Clause Types</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Semantic Search:</span>
+                      <Badge variant="outline">Cosine Similarity + Vector DB</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Quality Assurance:</span>
+                      <Badge variant="outline">Embedding Validation + Consistency</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Architecture Patterns:</span>
+                      <Badge variant="outline">Strategy + Factory + Command</Badge>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="border-t pt-6">
-                <h3 className="font-semibold mb-3">Agent Coordination</h3>
+                <h3 className="font-semibold mb-3">Migration & Database Schema</h3>
                 <div className="bg-slate-50 rounded-lg p-4">
-                  <div className="flex items-center justify-center space-x-4 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-blue-500" />
-                      <span>Sequential Execution</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-2">Enhanced Neo4j Schema</h4>
+                      <div className="space-y-1 text-xs text-slate-600">
+                        <div>Contract: document_embedding, summary_embedding</div>
+                        <div>Section: section_type, content, embedding, order</div>
+                        <div>Clause: clause_type, embedding, confidence</div>
+                        <div>Relationship: embedding, context</div>
+                      </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-slate-400" />
-                    <div className="flex items-center space-x-2">
-                      <Zap className="w-4 h-4 text-green-500" />
-                      <span>Parallel Processing</span>
+                    <div>
+                      <h4 className="font-medium mb-2">Migration Tools</h4>
+                      <div className="space-y-1 text-xs text-slate-600">
+                        <div>Schema upgrade/downgrade scripts</div>
+                        <div>Batch contract migration</div>
+                        <div>Embedding validation & quality checks</div>
+                        <div>Rollback capabilities</div>
+                      </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border-t pt-6">
+                <h3 className="font-semibold mb-3">Enhanced Search Capabilities</h3>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-purple-500" />
-                      <span>Result Aggregation</span>
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      <span>Document-Level Search</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <BarChart3 className="w-4 h-4 text-green-500" />
+                      <span>Section-Level Search</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Bot className="w-4 h-4 text-purple-500" />
+                      <span>Clause-Level Search (41 CUAD Types)</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Users className="w-4 h-4 text-orange-500" />
+                      <span>Relationship-Level Search</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <div className="flex items-center justify-center space-x-4 text-xs text-slate-600">
+                      <span>768-dimensional embeddings</span>
+                      <span>•</span>
+                      <span>Cosine similarity matching</span>
+                      <span>•</span>
+                      <span>Real-time semantic search</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="border-t pt-6">
+                <h3 className="font-semibold mb-3">Enhanced API Endpoints</h3>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-2">Enhanced Search APIs</h4>
+                      <div className="space-y-1 text-xs text-slate-600">
+                        <div>POST /api/contracts/search/enhanced</div>
+                        <div>POST /api/contracts/search/clauses</div>
+                        <div>POST /api/contracts/search/sections</div>
+                        <div>POST /api/contracts/search/relationships</div>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Enhanced Upload APIs</h4>
+                      <div className="space-y-1 text-xs text-slate-600">
+                        <div>POST /documents/enhanced/upload</div>
+                        <div>GET /documents/enhanced/embedding-status</div>
+                        <div>GET /api/contracts/search/clause-types</div>
+                        <div>GET /api/contracts/search/section-types</div>
+                      </div>
                     </div>
                   </div>
                 </div>

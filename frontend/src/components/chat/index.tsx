@@ -12,6 +12,13 @@ export function Chat() {
                 </div>
                 <ChatOutput />
                 <ChatInput />
+                
+                {/* CUAD Dataset Note */}
+                <div className="px-4 py-2 border-t border-slate-200 bg-slate-50">
+                    <p className="text-xs text-slate-500 text-center">
+                        <strong>CUAD Dataset:</strong> Contract Understanding Atticus Dataset - 500+ legal contracts with 41 annotated clause types for comprehensive contract analysis.
+                    </p>
+                </div>
             </ChatProvider>
         </div>
     );

@@ -4,6 +4,8 @@ import { Navigation } from './components/Navigation';
 import { ChatPage } from './pages/ChatPage';
 import { IntelligencePage } from './pages/IntelligencePage';
 import { AgentsPage } from './pages/AgentsPage';
+import { SearchPage } from './pages/SearchPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ContractHistoryProvider } from './contexts/ContractHistoryContext';
 import { useRouter } from './lib/useRouter';
 import './App.css';
@@ -19,6 +21,12 @@ function App() {
         return <IntelligencePage />;
       case 'agents':
         return <AgentsPage />;
+      case 'search':
+        return (
+          <ErrorBoundary>
+            <SearchPage />
+          </ErrorBoundary>
+        );
       default:
         return <IntelligencePage />;
     }

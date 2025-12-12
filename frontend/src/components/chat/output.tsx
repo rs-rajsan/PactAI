@@ -28,6 +28,7 @@ export function ChatOutput() {
                                     <li>• List all the contract types</li>
                                     <li>• Display the summary of all the contracts that have monetary value of 50k </li>
                                     <li>• who are the parties of SOW contracts?</li>
+                                    <li>• Show me all relationships between parties in SOW contracts - who works with whom?</li>
                                 </ul>
                             </div>
                         </div>

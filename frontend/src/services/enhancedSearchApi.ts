@@ -14,9 +14,9 @@ export interface SectionType {
   description: string;
 }
 
-export class EnhancedSearchApi {
+class EnhancedSearchApi {
   
-  static async searchContracts(params: EnhancedSearchParams): Promise<EnhancedSearchResponse> {
+  async searchContracts(params: EnhancedSearchParams): Promise<EnhancedSearchResponse> {
     const response = await fetch(`${API_BASE_URL}/api/contracts/search/enhanced`, {
       method: 'POST',
       headers: {
@@ -40,7 +40,7 @@ export class EnhancedSearchApi {
     return response.json();
   }
 
-  static async getClauseTypes(): Promise<string[]> {
+  async getClauseTypes(): Promise<string[]> {
     const response = await fetch(`${API_BASE_URL}/api/contracts/search/clause-types`);
     
     if (!response.ok) {
@@ -51,7 +51,7 @@ export class EnhancedSearchApi {
     return data.clause_types;
   }
 
-  static async getSectionTypes(): Promise<SectionType[]> {
+  async getSectionTypes(): Promise<SectionType[]> {
     const response = await fetch(`${API_BASE_URL}/api/contracts/search/section-types`);
     
     if (!response.ok) {
@@ -62,7 +62,7 @@ export class EnhancedSearchApi {
     return data.section_types;
   }
 
-  static async uploadEnhancedDocument(
+  async uploadEnhancedDocument(
     file: File, 
     model: string = 'gemini-2.0-flash',
     enableEmbeddings: boolean = true
@@ -85,7 +85,7 @@ export class EnhancedSearchApi {
     return response.json();
   }
 
-  static async getEmbeddingStatus(contractId: string): Promise<any> {
+  async getEmbeddingStatus(contractId: string): Promise<any> {
     const response = await fetch(`${API_BASE_URL}/documents/enhanced/embedding-status/${contractId}`);
     
     if (!response.ok) {
@@ -95,3 +95,5 @@ export class EnhancedSearchApi {
     return response.json();
   }
 }
+
+export const enhancedSearchApi = new EnhancedSearchApi();

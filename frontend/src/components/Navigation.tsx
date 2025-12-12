@@ -2,8 +2,8 @@ import React from 'react';
 import { Button } from './ui/button';
 
 interface NavigationProps {
-  currentPage: 'chat' | 'intelligence' | 'agents';
-  onNavigate: (page: 'chat' | 'intelligence' | 'agents') => void;
+  currentPage: 'chat' | 'intelligence' | 'agents' | 'search';
+  onNavigate: (page: 'chat' | 'intelligence' | 'agents' | 'search') => void;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate }) => {
@@ -26,7 +26,14 @@ export const Navigation: React.FC<NavigationProps> = ({ currentPage, onNavigate 
                 onClick={() => onNavigate('chat')}
                 className={`px-4 py-2 ${currentPage === 'chat' ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200'}`}
               >
-                Contract Search
+                Contract Chat
+              </Button>
+              <Button
+                variant={currentPage === 'search' ? 'default' : 'ghost'}
+                onClick={() => onNavigate('search')}
+                className={`px-4 py-2 ${currentPage === 'search' ? 'bg-teal-600 hover:bg-teal-700 text-white' : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200'}`}
+              >
+                Enhanced Search
               </Button>
               <Button
                 variant={currentPage === 'agents' ? 'default' : 'ghost'}

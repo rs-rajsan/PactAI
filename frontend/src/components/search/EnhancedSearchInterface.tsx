@@ -64,20 +64,25 @@ export const EnhancedSearchInterface: React.FC<EnhancedSearchInterfaceProps> = (
 
         {/* Search Query */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-700">
+          <label htmlFor="search-query" className="block text-sm font-medium text-slate-700">
             Search Query
           </label>
           <div className="relative">
             <input
+              id="search-query"
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Enter your search query..."
               className="w-full px-4 py-2 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              aria-describedby="search-help"
             />
-            <Search className="absolute right-3 top-2.5 w-5 h-5 text-slate-400" />
+            <Search className="absolute right-3 top-2.5 w-5 h-5 text-slate-400" aria-hidden="true" />
           </div>
+          <p id="search-help" className="text-xs text-slate-500">
+            Use natural language to search contracts
+          </p>
         </div>
 
         {/* Conditional Filters Based on Search Level */}
@@ -147,6 +152,7 @@ export const EnhancedSearchInterface: React.FC<EnhancedSearchInterfaceProps> = (
           onClick={handleSearch}
           disabled={isLoading}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          aria-label={isLoading ? 'Searching contracts...' : 'Search contracts'}
         >
           {isLoading ? (
             <>
@@ -160,6 +166,13 @@ export const EnhancedSearchInterface: React.FC<EnhancedSearchInterfaceProps> = (
             </>
           )}
         </button>
+      </div>
+      
+      {/* CUAD Dataset Note */}
+      <div className="mt-6 pt-4 border-t border-slate-200">
+        <p className="text-xs text-slate-500 text-center">
+          <strong>CUAD Dataset:</strong> Contract Understanding Atticus Dataset - 500+ legal contracts with 41 annotated clause types for comprehensive contract analysis.
+        </p>
       </div>
     </div>
   );
