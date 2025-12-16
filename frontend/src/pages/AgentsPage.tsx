@@ -171,6 +171,23 @@ const workflows = {
       { agent: 'Dataset Integration', description: 'Add to searchable contract corpus with embeddings', icon: <BarChart3 className="w-5 h-5" />, tech: 'Neo4j graph storage, vector similarity indexing' }
     ]
   },
+  production_storage: {
+    title: 'Document Upload & Dataset Storage - Production',
+    icon: <FileText className="w-8 h-8" />,
+    description: 'Enhanced production flow with multi-tenancy, versioning, and data lineage',
+    steps: [
+      { agent: '🆕 Tenant Validation', description: 'Validate tenant access and isolation', icon: <Shield className="w-5 h-5" />, tech: 'Multi-tenant authentication, RLS policies', isNew: true },
+      { agent: '📝 Document Upload', description: 'PDF validation with version tracking', icon: <Upload className="w-5 h-5" />, tech: 'FastAPI, version detection, tenant isolation', isEnhanced: true },
+      { agent: '📝 PDF Processing Agent', description: 'Text extraction with lineage tracking', icon: <FileText className="w-5 h-5" />, tech: 'PyPDF2, processing lineage, confidence scoring', isEnhanced: true },
+      { agent: '🆕 Bias Detection', description: 'Check for content bias and fairness', icon: <Users className="w-5 h-5" />, tech: 'Fairness algorithms, demographic analysis', isNew: true },
+      { agent: 'Multi-Level Embedding Generation', description: 'Document, section, clause, relationship embeddings', icon: <Zap className="w-5 h-5" />, tech: 'Google text-embedding-004, hierarchical processing' },
+      { agent: '🆕 Embedding Validation', description: 'Validate embedding quality and consistency', icon: <CheckCircle className="w-5 h-5" />, tech: 'Dimension checks, consistency validation', isNew: true },
+      { agent: '📝 Clause Extraction Agent', description: 'Extract 41 CUAD clause types with validation', icon: <Bot className="w-5 h-5" />, tech: 'LangChain, confidence scoring, source citation, multi-model validation', isEnhanced: true },
+      { agent: '🆕 Error Handling & Safety', description: 'Validate outputs and handle errors gracefully', icon: <AlertTriangle className="w-5 h-5" />, tech: 'Circuit breakers, hallucination detection, output validation, safety checks', isNew: true },
+      { agent: '📝 Knowledge Graph Storage', description: 'Store with tenant isolation and versioning', icon: <CheckCircle className="w-5 h-5" />, tech: 'Neo4j tenant policies, version chains, lineage tracking', isEnhanced: true },
+      { agent: '🆕 Analysis Results Storage', description: 'Store AI analysis with full provenance', icon: <BarChart3 className="w-5 h-5" />, tech: 'Analysis nodes, processing lineage, audit trail', isNew: true }
+    ]
+  },
   chat: {
     title: 'Contract Search & Chat',
     icon: <MessageSquare className="w-8 h-8" />,
@@ -205,6 +222,22 @@ const workflows = {
       { agent: 'Neo4j Storage', description: 'Store multi-level embeddings', icon: <BarChart3 className="w-5 h-5" />, tech: 'Graph database, vector indexing' }
     ]
   },
+  production_orchestration: {
+    title: 'Embedding Orchestration Pipeline - Production',
+    icon: <Zap className="w-8 h-8" />,
+    description: 'Enhanced production embedding pipeline with tenant isolation, versioning, and quality assurance',
+    steps: [
+      { agent: '🆕 Tenant Context Validation', description: 'Validate tenant access and embedding isolation', icon: <Shield className="w-5 h-5" />, tech: 'Multi-tenant validation, access control', isNew: true },
+      { agent: '📝 Document Embedding Agent', description: 'Generate document & section embeddings with lineage', icon: <FileText className="w-5 h-5" />, tech: 'Google text-embedding-004, processing lineage, version tracking', isEnhanced: true },
+      { agent: '🆕 Fine-Tuning Integration', description: 'Apply domain-specific fine-tuned embeddings', icon: <Brain className="w-5 h-5" />, tech: 'LoRA adapters, legal domain fine-tuning, model versioning', isNew: true },
+      { agent: '📝 Clause Embedding Agent', description: 'Extract & embed 41 CUAD clause types with validation', icon: <Bot className="w-5 h-5" />, tech: 'Pattern matching, confidence scoring, source attribution', isEnhanced: true },
+      { agent: '📝 Relationship Embedding Agent', description: 'Extract & embed party relationships with context', icon: <Users className="w-5 h-5" />, tech: 'Entity extraction, context embedding, relationship validation', isEnhanced: true },
+      { agent: '🆕 Cross-Validation Engine', description: 'Multi-model embedding consistency checks', icon: <CheckCircle className="w-5 h-5" />, tech: 'Multi-model validation, consensus scoring, anomaly detection', isNew: true },
+      { agent: '📝 Embedding Validator', description: 'Enhanced quality & consistency validation', icon: <CheckCircle className="w-5 h-5" />, tech: 'Dimension checks, similarity validation, drift detection', isEnhanced: true },
+      { agent: '🆕 Embedding Lineage Tracker', description: 'Track embedding provenance and versioning', icon: <BarChart3 className="w-5 h-5" />, tech: 'Lineage tracking, version chains, audit trails', isNew: true },
+      { agent: '📝 Neo4j Storage', description: 'Store multi-level embeddings with tenant isolation', icon: <BarChart3 className="w-5 h-5" />, tech: 'Graph database, vector indexing, tenant policies', isEnhanced: true }
+    ]
+  },
   analysis: {
     title: 'Contract Intelligence Analysis',
     icon: <BarChart3 className="w-8 h-8" />,
@@ -221,7 +254,7 @@ const workflows = {
 
 export const AgentsPage: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
-  const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
+  const [activeWorkflows, setActiveWorkflows] = useState<Set<string>>(new Set());
 
   return (
     <div className="space-y-8">
@@ -307,9 +340,17 @@ export const AgentsPage: React.FC = () => {
             <Card 
               key={key} 
               className={`overflow-hidden cursor-pointer transition-all duration-200 ${
-                activeWorkflow === key ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'
+                activeWorkflows.has(key) ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'
               }`}
-              onClick={() => setActiveWorkflow(activeWorkflow === key ? null : key)}
+              onClick={() => {
+                const newActiveWorkflows = new Set(activeWorkflows);
+                if (newActiveWorkflows.has(key)) {
+                  newActiveWorkflows.delete(key);
+                } else {
+                  newActiveWorkflows.add(key);
+                }
+                setActiveWorkflows(newActiveWorkflows);
+              }}
             >
               <CardHeader className="bg-slate-50">
                 <div className="flex items-center justify-between">
@@ -325,7 +366,7 @@ export const AgentsPage: React.FC = () => {
                   <Badge variant="outline">Click to expand</Badge>
                 </div>
               </CardHeader>
-              {activeWorkflow === key && (
+              {activeWorkflows.has(key) && (
                 <CardContent className="p-6 border-t">
                   <div className="flex items-center justify-between">
                     {workflow.steps.map((step, idx) => (
@@ -334,7 +375,13 @@ export const AgentsPage: React.FC = () => {
                           <div className="p-3 bg-slate-100 rounded-full mb-2 hover:bg-blue-100 transition-colors">
                             {step.icon}
                           </div>
-                          <h4 className="font-semibold text-sm mb-1">{step.agent}</h4>
+                          <h4 className={`font-semibold text-sm mb-1 ${
+                            step.isNew ? 'text-red-600' : 
+                            step.isEnhanced ? 'text-red-600' : 
+                            'text-slate-800'
+                          }`}>
+                            {step.agent}
+                          </h4>
                           <p className="text-xs text-slate-600 mb-2">{step.description}</p>
                           <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded border">
                             {step.tech}
@@ -351,9 +398,11 @@ export const AgentsPage: React.FC = () => {
                     <div className="flex justify-center">
                       <Badge variant="secondary">
                         {key === 'storage' && 'Automatic: Happens when you upload any document'}
+                        {key === 'production_storage' && 'Production: Enhanced workflow with tenant isolation & versioning'}
                         {key === 'chat' && 'Try it: Go to Contract Search'}
                         {key === 'search' && 'Try it: Use enhanced search with granular filters'}
                         {key === 'orchestration' && 'Automatic: Multi-level embedding generation'}
+                        {key === 'production_orchestration' && 'Production: Enhanced embedding pipeline with fine-tuning & validation'}
                         {key === 'analysis' && 'Try it: Upload PDF → Click Analyze'}
                       </Badge>
                     </div>

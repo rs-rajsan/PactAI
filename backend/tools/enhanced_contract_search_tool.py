@@ -113,7 +113,7 @@ def _search_documents(embeddings, summary_search, filters, params,
         params["summary_embedding"] = summary_embedding
         
         cypher_statement += """
-        WITH c, vector.similarity.cosine(c.document_embedding, $summary_embedding) AS doc_score
+        WITH c, vector.similarity.cosine(c.embedding, $summary_embedding) AS doc_score
         WHERE doc_score > 0.8
         ORDER BY doc_score DESC
         """

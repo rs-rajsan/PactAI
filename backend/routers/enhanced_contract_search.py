@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from ..tools.enhanced_contract_search_tool import (
-    EnhancedContractSearchTool, 
-    SearchLevel, 
-    MonetaryValue, 
-    Location
-)
+from ..domain.search_entities import SearchLevel, SearchParams
+from ..services.enhanced_search_service import EnhancedSearchService
+from ..mappers.search_mapper import SearchResponseMapper
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/contracts", tags=["Enhanced Contract Search"])
 
@@ -42,37 +42,55 @@ class EnhancedSearchRequest(BaseModel):
     # Other filters
     contract_type: Optional[str] = Field(None, description="Contract type")
     active: Optional[bool] = Field(None, description="Active contracts only")
-    monetary_value: Optional[MonetaryValue] = Field(None, description="Monetary value filter")
-    governing_law: Optional[Location] = Field(None, description="Governing law location")
 
-# Initialize the enhanced search tool
-search_tool = EnhancedContractSearchTool()
+
+# Initialize the enhanced search service
+search_service = EnhancedSearchService()
 
 @router.post("/search/enhanced")
 async def enhanced_contract_search(request: EnhancedSearchRequest):
     """Enhanced contract search with multi-level embedding support"""
     try:
-        result = search_tool._run(
+        print("\n=== ENHANCED SEARCH DEBUG ===", flush=True)
+        print(f"Search Level: {request.search_level}", flush=True)
+        print(f"Query: {request.query}", flush=True)
+        print(f"Contract Type: {request.contract_type}", flush=True)
+        print(f"Active: {request.active}", flush=True)
+        
+        # Convert request to search params
+        search_params = SearchParams(
             search_level=request.search_level,
+            query=request.query,
             clause_types=request.clause_types,
             section_types=request.section_types,
-            summary_search=request.query,
             parties=request.parties,
+            contract_type=request.contract_type,
+            active=request.active,
             min_effective_date=request.min_effective_date,
             max_effective_date=request.max_effective_date,
             min_end_date=request.min_end_date,
-            max_end_date=request.max_end_date,
-            contract_type=request.contract_type,
-            active=request.active,
-            monetary_value=request.monetary_value,
-            governing_law=request.governing_law
+            max_end_date=request.max_end_date
         )
         
-        return {
-            "success": True,
-            "search_level": request.search_level,
-            "results": result
-        }
+        # Execute search using service
+        result = search_service.search(search_params)
+        
+        print(f"Raw Search Result:", flush=True)
+        print(f"  Total Count: {result.total_count}", flush=True)
+        print(f"  Items Length: {len(result.items)}", flush=True)
+        print(f"  First Item: {result.items[0] if result.items else 'None'}", flush=True)
+        print(f"  Metadata: {result.search_metadata}", flush=True)
+        
+        # Map to API response
+        response = SearchResponseMapper.to_api_response(result, request.search_level.value)
+        
+        print(f"Final API Response:", flush=True)
+        print(f"  Success: {response['success']}", flush=True)
+        print(f"  Contracts Found: {response['contracts_found']}", flush=True)
+        print(f"  Results Length: {len(response['results'])}", flush=True)
+        print(f"=== END DEBUG ===\n", flush=True)
+        
+        return response
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
@@ -81,17 +99,14 @@ async def enhanced_contract_search(request: EnhancedSearchRequest):
 async def search_clauses(request: ClauseSearchRequest):
     """Search contracts by specific clause types"""
     try:
-        result = search_tool._run(
+        search_params = SearchParams(
             search_level=SearchLevel.CLAUSE,
-            clause_types=request.clause_types,
-            summary_search=request.query
+            query=request.query,
+            clause_types=request.clause_types
         )
+        result = search_service.search(search_params)
         
-        return {
-            "success": True,
-            "clause_types": request.clause_types,
-            "results": result
-        }
+
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Clause search failed: {str(e)}")
@@ -100,17 +115,14 @@ async def search_clauses(request: ClauseSearchRequest):
 async def search_sections(request: SectionSearchRequest):
     """Search contracts by document sections"""
     try:
-        result = search_tool._run(
+        search_params = SearchParams(
             search_level=SearchLevel.SECTION,
-            section_types=request.section_types,
-            summary_search=request.query
+            query=request.query,
+            section_types=request.section_types
         )
+        result = search_service.search(search_params)
         
-        return {
-            "success": True,
-            "section_types": request.section_types,
-            "results": result
-        }
+
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Section search failed: {str(e)}")
@@ -119,17 +131,14 @@ async def search_sections(request: SectionSearchRequest):
 async def search_relationships(request: RelationshipSearchRequest):
     """Search contracts by party relationships"""
     try:
-        result = search_tool._run(
+        search_params = SearchParams(
             search_level=SearchLevel.RELATIONSHIP,
-            parties=request.parties,
-            summary_search=request.query
+            query=request.query,
+            parties=request.parties
         )
+        result = search_service.search(search_params)
         
-        return {
-            "success": True,
-            "parties": request.parties,
-            "results": result
-        }
+
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Relationship search failed: {str(e)}")
