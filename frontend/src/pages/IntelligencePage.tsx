@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { DocumentUpload } from '../components/upload/DocumentUpload';
-import { ContractIntelligence } from '../components/intelligence/ContractIntelligence';
-import { AgentWorkflowTracker } from '../components/workflow/AgentWorkflowTracker';
-import { Card } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { DocumentUpload } from '../components/features/contracts/DocumentUpload';
+import { ContractIntelligence } from '../components/features/intelligence/ContractIntelligence';
+import { AgentWorkflowTracker } from '../components/features/agents/AgentWorkflowTracker';
+import { Card } from '../components/shared/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/shared/ui/select';
 import { useContractHistory } from '../contexts/ContractHistoryContext';
 
 interface UploadResult {

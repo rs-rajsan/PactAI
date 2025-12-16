@@ -1,8 +1,8 @@
 from typing import Dict, Any, List
 import re
 from . import EmbeddingAgent, EmbeddingResult
-from ..strategies.factory import EmbeddingFactory
-from ..strategies import EmbeddingType
+from backend.embeddings.strategies.factory import EmbeddingFactory
+from backend.embeddings.strategies import EmbeddingType
 
 class ClauseEmbeddingAgent(EmbeddingAgent):
     """Agent for extracting and embedding contract clauses"""

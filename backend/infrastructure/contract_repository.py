@@ -1,5 +1,5 @@
 from backend.domain.entities import IContractRepository
-from backend.tools.contract_search_tool import graph, embedding
+from backend.shared.utils.contract_search_tool import graph, embedding
 from typing import Dict, Any
 import uuid
 from datetime import datetime

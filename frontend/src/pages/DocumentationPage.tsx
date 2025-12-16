@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/shared/ui/card';
 // Simple Badge component
 const Badge: React.FC<{ children: React.ReactNode; variant?: 'default' | 'secondary' | 'outline'; className?: string }> = ({ children, variant = 'default', className = '' }) => {
   const baseClasses = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium';
@@ -10,7 +10,7 @@ const Badge: React.FC<{ children: React.ReactNode; variant?: 'default' | 'second
   };
   return <span className={`${baseClasses} ${variantClasses[variant]} ${className}`}>{children}</span>;
 };
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/shared/ui/tabs';
 import { 
   Bot, 
   FileText, 

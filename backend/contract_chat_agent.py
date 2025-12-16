@@ -1,5 +1,5 @@
-from backend.tools.contract_search_tool import ContractSearchTool
-from backend.tools.enhanced_contract_search_tool import EnhancedContractSearchTool
+from backend.shared.utils.contract_search_tool import ContractSearchTool
+from backend.shared.utils.enhanced_contract_search_tool import EnhancedContractSearchTool
 from langchain_core.messages import SystemMessage
 from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition

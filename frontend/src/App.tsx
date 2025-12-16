@@ -1,11 +1,11 @@
 import React from 'react';
-import { ThemeProvider } from './components/theme-provider';
-import { Navigation } from './components/Navigation';
+import { ThemeProvider } from './components/shared/theme-provider';
+import { Navigation } from './components/layout/Navigation';
 import { ChatPage } from './pages/ChatPage';
 import { IntelligencePage } from './pages/IntelligencePage';
 import { DocumentationPage } from './pages/DocumentationPage';
 import { SearchPage } from './pages/SearchPage';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { ContractHistoryProvider } from './contexts/ContractHistoryContext';
 import { useRouter } from './lib/useRouter';
 import './App.css';

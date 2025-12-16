@@ -1,5 +1,5 @@
 import React from 'react';
-import { Chat } from '../components/chat';
+import { Chat } from '../components/features/contracts';
 
 export const ChatPage: React.FC = () => {
   return (

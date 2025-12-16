@@ -1,5 +1,5 @@
 from backend.domain.entities import IContractAnalyzer
-from backend.tools.contract_search_tool import CONTRACT_TYPES
+from backend.shared.utils.contract_search_tool import CONTRACT_TYPES
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser

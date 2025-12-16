@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { EnhancedSearchInterface, EnhancedSearchParams } from '../components/search/EnhancedSearchInterface';
-import { EnhancedSearchResults } from '../components/results/EnhancedSearchResults';
+import { EnhancedSearchInterface, EnhancedSearchParams } from '../components/features/search/EnhancedSearchInterface';
+import { EnhancedSearchResults } from '../components/features/search/EnhancedSearchResults';
 import { enhancedSearchApi, EnhancedSearchResponse } from '../services/enhancedSearchApi';
 
 interface SearchState {

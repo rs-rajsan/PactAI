@@ -9,11 +9,11 @@ from pydantic import BaseModel
 
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage, AIMessageChunk
 from backend.llm_manager import LLMManager
-from backend.routers.document_upload import router as document_router
-from backend.routers.contract_intelligence import router as intelligence_router
-from backend.routers.debug import router as debug_router
-from backend.routers.enhanced_contract_search import router as enhanced_search_router
-from backend.routers.enhanced_document_upload import router as enhanced_upload_router
+from backend.api.document_upload import router as document_router
+from backend.api.contract_intelligence import router as intelligence_router
+from backend.api.development import router as dev_router
+from backend.api.enhanced_contract_search import router as enhanced_search_router
+from backend.api.enhanced_document_upload import router as enhanced_upload_router
 from backend.agents.agent_workflow_tracker import get_current_workflow_status
 
 
@@ -44,7 +44,7 @@ app.add_middleware(
 # Include routers
 app.include_router(document_router)
 app.include_router(intelligence_router)
-app.include_router(debug_router)
+app.include_router(dev_router)
 app.include_router(enhanced_search_router)
 app.include_router(enhanced_upload_router)
 
