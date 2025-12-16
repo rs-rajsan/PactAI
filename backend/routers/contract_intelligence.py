@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends, Request
 from fastapi.responses import StreamingResponse
 from backend.services.contract_intelligence_service import ContractIntelligenceServiceFactory
 from backend.agent_manager import AgentManager
@@ -12,16 +12,19 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(prefix="/intelligence", tags=["contract-intelligence"])
 
-# Initialize services
-agent_manager = AgentManager()
-intelligence_service = ContractIntelligenceServiceFactory.create_service(agent_manager)
+# Repository (stateless)
 repository = Neo4jContractRepository()
+
+# Dependency injection
+def get_agent_manager(request: Request):
+    return request.app.state.agent_manager
 
 @router.post("/contracts/{contract_id}/analyze")
 async def analyze_contract_intelligence(
     contract_id: str,
     model: str = Query(default="gemini-2.0-flash", description="LLM model to use for analysis"),
-    use_planning: bool = Query(default=True, description="Use autonomous planning agent")
+    use_planning: bool = Query(default=True, description="Use autonomous planning agent"),
+    agent_mgr: AgentManager = Depends(get_agent_manager)
 ):
     """
     Perform comprehensive contract intelligence analysis using multi-agent system
@@ -33,6 +36,9 @@ async def analyze_contract_intelligence(
     
     try:
         logger.info(f"Starting intelligence analysis for contract: {contract_id}")
+        
+        # Create service with injected agent manager
+        intelligence_service = ContractIntelligenceServiceFactory.create_service(agent_mgr)
         
         # Perform multi-agent analysis with optional planning
         intelligence = intelligence_service.analyze_contract_by_id(contract_id, model, use_planning)
@@ -221,11 +227,11 @@ async def get_intelligence_dashboard():
         raise HTTPException(status_code=500, detail=f"Dashboard summary failed: {str(e)}")
 
 @router.get("/models")
-async def get_available_models():
+async def get_available_models(agent_mgr: AgentManager = Depends(get_agent_manager)):
     """Get list of available LLM models for intelligence analysis"""
     
     try:
-        available_models = list(agent_manager.agents.keys())
+        available_models = list(agent_mgr.agents.keys())
         
         return {
             "available_models": available_models,

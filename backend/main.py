@@ -1,7 +1,8 @@
 import json
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -18,9 +19,18 @@ from backend.agents.agent_workflow_tracker import get_current_workflow_status
 
 load_dotenv()
 
-agent_manager = AgentManager()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup - Initialize once
+    app.state.agent_manager = AgentManager()
+    yield
+    # Shutdown - cleanup if needed
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+
+# Dependency injection
+def get_agent_manager(request: Request):
+    return request.app.state.agent_manager
 
 
 app.add_middleware(
@@ -93,7 +103,7 @@ def rebuild_history(history):
     return messages
 
 
-async def runner(model: str, prompt: str, history: str):
+async def runner(model: str, prompt: str, history: str, agent_mgr: AgentManager):
     # history comes in from FE as stringified list of dumped model messages
     if history != "[]":
         previous_messages = rebuild_history(history)
@@ -102,7 +112,7 @@ async def runner(model: str, prompt: str, history: str):
 
     prompt_message = HumanMessage(content=prompt)
     input_messages = [*previous_messages, prompt_message]
-    messages = agent_manager.get_model_by_name(model).astream(
+    messages = agent_mgr.get_model_by_name(model).astream(
         input={"messages": input_messages}, stream_mode=["messages", "updates"]
     )
 
@@ -146,8 +156,8 @@ async def runner(model: str, prompt: str, history: str):
 
 
 @app.post("/run/")
-async def run(payload: RunPayload):
+async def run(payload: RunPayload, agent_mgr: AgentManager = Depends(get_agent_manager)):
     return StreamingResponse(
-        runner(model=payload.model, prompt=payload.prompt, history=payload.history),
+        runner(model=payload.model, prompt=payload.prompt, history=payload.history, agent_mgr=agent_mgr),
         media_type="text/event-stream",
     )

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query, Depends, Request
 from backend.services.enhanced_document_processing_service import EnhancedDocumentServiceFactory
 from backend.domain.entities import DocumentProcessingRequest
 from backend.agent_manager import AgentManager
@@ -12,15 +12,16 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(prefix="/documents/enhanced", tags=["enhanced-documents"])
 
-# Initialize services
-agent_manager = AgentManager()
-enhanced_document_service = EnhancedDocumentServiceFactory.create_service(agent_manager)
+# Dependency injection
+def get_agent_manager(request: Request):
+    return request.app.state.agent_manager
 
 @router.post("/upload")
 async def upload_pdf_enhanced(
     file: UploadFile = File(...),
     model: str = Query(default="gemini-2.0-flash", description="LLM model to use for processing"),
-    enable_embeddings: bool = Query(default=True, description="Enable multi-level embeddings processing")
+    enable_embeddings: bool = Query(default=True, description="Enable multi-level embeddings processing"),
+    agent_mgr: AgentManager = Depends(get_agent_manager)
 ):
     """
     Upload and process PDF contract with enhanced multi-level embeddings
@@ -119,11 +120,13 @@ async def upload_pdf_enhanced(
         logger.info(f"Step 7: Starting enhanced document processing for: {file.filename}")
         try:
             if enable_embeddings:
+                # Create service with injected agent manager
+                enhanced_document_service = EnhancedDocumentServiceFactory.create_service(agent_mgr)
                 result = enhanced_document_service.process_pdf_with_embeddings(processing_request)
             else:
                 # Fallback to regular processing
                 from backend.services.document_processing_service import DocumentServiceFactory
-                regular_service = DocumentServiceFactory.create_service(agent_manager)
+                regular_service = DocumentServiceFactory.create_service(agent_mgr)
                 result = regular_service.process_pdf_upload(processing_request)
                 result["enhanced_embeddings"] = False
             
@@ -251,13 +254,13 @@ async def get_embedding_status(contract_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get embedding status: {str(e)}")
 
 @router.get("/status")
-async def get_enhanced_upload_status():
+async def get_enhanced_upload_status(agent_mgr: AgentManager = Depends(get_agent_manager)):
     """Get system status for enhanced document uploads"""
     return {
         "status": "operational",
         "supported_formats": ["pdf"],
         "max_file_size": "50MB",
-        "available_models": list(agent_manager.agents.keys()),
+        "available_models": list(agent_mgr.agents.keys()),
         "embedding_features": {
             "document_level": True,
             "section_level": True,
