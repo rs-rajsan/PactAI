@@ -12,7 +12,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Create router
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 # Dependency injection
 def get_llm_manager(request: Request):

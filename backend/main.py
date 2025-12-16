@@ -11,7 +11,9 @@ from langchain_core.messages import HumanMessage, ToolMessage, AIMessage, AIMess
 from backend.llm_manager import LLMManager
 from backend.api.document_upload import router as document_router
 from backend.api.contract_intelligence import router as intelligence_router
-from backend.api.development import router as dev_router
+from backend.api.routes.debug import create_debug_router
+from backend.api.routes.production import create_production_router
+from backend.shared.utils.route_utils import is_development, conditionally_include_router
 from backend.api.enhanced_contract_search import router as enhanced_search_router
 from backend.api.enhanced_document_upload import router as enhanced_upload_router
 from backend.agents.agent_workflow_tracker import get_current_workflow_status
@@ -41,19 +43,22 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
-# Include routers
+# Include routers based on environment
 app.include_router(document_router)
 app.include_router(intelligence_router)
-app.include_router(dev_router)
-app.include_router(enhanced_search_router)
+app.include_router(enhanced_search_router, prefix="/api")
 app.include_router(enhanced_upload_router)
 
-@app.get("/workflow/status")
+# Debug routes (development only)
+debug_router = create_debug_router()
+conditionally_include_router(app, debug_router, is_development())
+
+@app.get("/api/workflow/status")
 async def get_workflow_status():
     """Get current multi-agent workflow status for executive dashboard"""
     return get_current_workflow_status()
 
-@app.get("/planning/status")
+@app.get("/api/planning/status")
 async def get_planning_status():
     """Get autonomous planning agent status"""
     from backend.agents.planning.planning_agent import PlanningAgentFactory
@@ -155,7 +160,7 @@ async def runner(model: str, prompt: str, history: str, llm_mgr: LLMManager):
     yield f"data: {json.dumps({'content': '', 'type': 'end'})}\n\n"
 
 
-@app.post("/run/")
+@app.post("/api/run/")
 async def run(payload: RunPayload, llm_mgr: LLMManager = Depends(get_llm_manager)):
     return StreamingResponse(
         runner(model=payload.model, prompt=payload.prompt, history=payload.history, llm_mgr=llm_mgr),

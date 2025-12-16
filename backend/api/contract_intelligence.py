@@ -10,7 +10,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Create router
-router = APIRouter(prefix="/intelligence", tags=["contract-intelligence"])
+router = APIRouter(prefix="/api/intelligence", tags=["contract-intelligence"])
 
 # Repository (stateless)
 repository = Neo4jContractRepository()

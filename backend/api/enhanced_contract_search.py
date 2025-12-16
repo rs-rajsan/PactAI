@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/contracts", tags=["Enhanced Contract Search"])
+router = APIRouter(prefix="/contracts", tags=["Enhanced Contract Search"])
 
 # Request models
 class ClauseSearchRequest(BaseModel):
