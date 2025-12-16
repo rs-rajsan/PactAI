@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage, AIMessageChunk
-from backend.agent_manager import AgentManager
+from backend.llm_manager import LLMManager
 from backend.routers.document_upload import router as document_router
 from backend.routers.contract_intelligence import router as intelligence_router
 from backend.routers.debug import router as debug_router
@@ -22,15 +22,15 @@ load_dotenv()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup - Initialize once
-    app.state.agent_manager = AgentManager()
+    app.state.llm_manager = LLMManager()
     yield
     # Shutdown - cleanup if needed
 
 app = FastAPI(lifespan=lifespan)
 
 # Dependency injection
-def get_agent_manager(request: Request):
-    return request.app.state.agent_manager
+def get_llm_manager(request: Request):
+    return request.app.state.llm_manager
 
 
 app.add_middleware(
@@ -103,7 +103,7 @@ def rebuild_history(history):
     return messages
 
 
-async def runner(model: str, prompt: str, history: str, agent_mgr: AgentManager):
+async def runner(model: str, prompt: str, history: str, llm_mgr: LLMManager):
     # history comes in from FE as stringified list of dumped model messages
     if history != "[]":
         previous_messages = rebuild_history(history)
@@ -112,7 +112,7 @@ async def runner(model: str, prompt: str, history: str, agent_mgr: AgentManager)
 
     prompt_message = HumanMessage(content=prompt)
     input_messages = [*previous_messages, prompt_message]
-    messages = agent_mgr.get_model_by_name(model).astream(
+    messages = llm_mgr.get_model_by_name(model).astream(
         input={"messages": input_messages}, stream_mode=["messages", "updates"]
     )
 
@@ -156,8 +156,8 @@ async def runner(model: str, prompt: str, history: str, agent_mgr: AgentManager)
 
 
 @app.post("/run/")
-async def run(payload: RunPayload, agent_mgr: AgentManager = Depends(get_agent_manager)):
+async def run(payload: RunPayload, llm_mgr: LLMManager = Depends(get_llm_manager)):
     return StreamingResponse(
-        runner(model=payload.model, prompt=payload.prompt, history=payload.history, agent_mgr=agent_mgr),
+        runner(model=payload.model, prompt=payload.prompt, history=payload.history, llm_mgr=llm_mgr),
         media_type="text/event-stream",
     )

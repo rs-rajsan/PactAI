@@ -4,12 +4,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
 from langchain_mistralai import ChatMistralAI
 
-from backend.agent import get_agent
+from backend.contract_chat_agent import get_agent
 
 from typing import Any
 
 
-class AgentManager:
+class LLMManager:
     agents = {}
 
     def __init__(self):

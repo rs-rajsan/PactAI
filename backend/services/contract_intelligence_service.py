@@ -1,7 +1,7 @@
 from backend.agents.contract_intelligence_agents import ContractIntelligenceAgentFactory
 from backend.domain.entities import ContractIntelligence, ContractClause, PolicyViolation, RiskAssessment, RedlineRecommendation
 from backend.infrastructure.contract_repository import Neo4jContractRepository
-from backend.agent_manager import AgentManager
+from backend.llm_manager import LLMManager
 import json
 import logging
 import time
@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 class ContractIntelligenceService:
     """Service for contract intelligence analysis using multi-agent system"""
     
-    def __init__(self, agent_manager: AgentManager):
-        self.agent_manager = agent_manager
+    def __init__(self, llm_manager: LLMManager):
+        self.llm_manager = llm_manager
         self.repository = Neo4jContractRepository()
     
     def analyze_contract_intelligence(self, contract_text: str, model: str = "gemini-2.0-flash", use_planning: bool = True) -> ContractIntelligence:
@@ -103,14 +103,14 @@ class ContractIntelligenceService:
     def _get_llm_for_model(self, model: str):
         """Get LLM instance for the specified model"""
         try:
-            return self.agent_manager.agents[model]._llm if hasattr(self.agent_manager.agents[model], '_llm') else self.agent_manager.agents[model]
+            return self.llm_manager.agents[model]._llm if hasattr(self.llm_manager.agents[model], '_llm') else self.llm_manager.agents[model]
         except KeyError:
             logger.warning(f"Model {model} not found, using default")
             # Use first available model as fallback
-            available_models = list(self.agent_manager.agents.keys())
+            available_models = list(self.llm_manager.agents.keys())
             if available_models:
                 fallback_model = available_models[0]
-                return self.agent_manager.agents[fallback_model]._llm if hasattr(self.agent_manager.agents[fallback_model], '_llm') else self.agent_manager.agents[fallback_model]
+                return self.llm_manager.agents[fallback_model]._llm if hasattr(self.llm_manager.agents[fallback_model], '_llm') else self.llm_manager.agents[fallback_model]
             else:
                 raise ValueError("No LLM models available")
     
@@ -208,6 +208,6 @@ class ContractIntelligenceServiceFactory:
     """Factory for creating contract intelligence service"""
     
     @staticmethod
-    def create_service(agent_manager: AgentManager) -> ContractIntelligenceService:
+    def create_service(llm_manager: LLMManager) -> ContractIntelligenceService:
         """Create a new contract intelligence service"""
-        return ContractIntelligenceService(agent_manager)
+        return ContractIntelligenceService(llm_manager)

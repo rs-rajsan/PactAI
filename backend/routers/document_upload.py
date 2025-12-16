@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks,
 from fastapi.responses import StreamingResponse
 from backend.services.document_processing_service import DocumentServiceFactory
 from backend.domain.entities import DocumentProcessingRequest
-from backend.agent_manager import AgentManager
+from backend.llm_manager import LLMManager
 import os
 import uuid
 import json
@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 # Dependency injection
-def get_agent_manager(request: Request):
-    return request.app.state.agent_manager
+def get_llm_manager(request: Request):
+    return request.app.state.llm_manager
 
 @router.get("/debug/contracts")
 async def debug_contracts():
@@ -82,7 +82,7 @@ async def upload_pdf(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     model: str = Query(default="gemini-2.0-flash", description="LLM model to use for processing"),
-    agent_mgr: AgentManager = Depends(get_agent_manager)
+    llm_mgr: LLMManager = Depends(get_llm_manager)
 ):
     """
     Upload and process PDF contract
@@ -115,7 +115,7 @@ async def upload_pdf(
         # Check for duplicate by filename
         logger.info("Step 3: Checking for duplicates")
         try:
-            duplicate_check = agent_mgr.agents["gemini-2.0-flash"]._llm if hasattr(agent_mgr.agents["gemini-2.0-flash"], '_llm') else agent_mgr.agents["gemini-2.0-flash"]
+            duplicate_check = llm_mgr.agents["gemini-2.0-flash"]._llm if hasattr(llm_mgr.agents["gemini-2.0-flash"], '_llm') else llm_mgr.agents["gemini-2.0-flash"]
             from backend.infrastructure.contract_repository import Neo4jContractRepository
             repo = Neo4jContractRepository()
             logger.info("Repository initialized successfully")
@@ -182,8 +182,8 @@ async def upload_pdf(
         # Process synchronously with error handling
         logger.info(f"Step 7: Starting document processing for: {file.filename}")
         try:
-            # Create service with injected agent manager
-            document_service = DocumentServiceFactory.create_service(agent_mgr)
+            # Create service with injected LLM manager
+            document_service = DocumentServiceFactory.create_service(llm_mgr)
             result = document_service.process_pdf_upload(processing_request)
             logger.info(f"Document processing completed successfully: {result}")
         except Exception as proc_error:
@@ -245,7 +245,7 @@ async def upload_pdf(
 async def upload_pdf_stream(
     file: UploadFile = File(...),
     model: str = Query(default="gemini-2.0-flash", description="LLM model to use for processing"),
-    agent_mgr: AgentManager = Depends(get_agent_manager)
+    llm_mgr: LLMManager = Depends(get_llm_manager)
 ):
     """
     Upload and process PDF with streaming response
@@ -278,8 +278,8 @@ async def upload_pdf_stream(
         # Stream processing results (similar to existing /run/ endpoint)
         async def stream_processing():
             try:
-                # Create service with injected agent manager
-                document_service = DocumentServiceFactory.create_service(agent_mgr)
+                # Create service with injected LLM manager
+                document_service = DocumentServiceFactory.create_service(llm_mgr)
                 # Get LLM and create agent
                 llm = document_service._get_llm_for_model(model)
                 from backend.agents.pdf_processing_agent import PDFAgentFactory
@@ -344,11 +344,11 @@ async def upload_pdf_stream(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/status")
-async def get_upload_status(agent_mgr: AgentManager = Depends(get_agent_manager)):
+async def get_upload_status(llm_mgr: LLMManager = Depends(get_llm_manager)):
     """Get system status for document uploads"""
     return {
         "status": "operational",
         "supported_formats": ["pdf"],
         "max_file_size": "50MB",
-        "available_models": list(agent_mgr.agents.keys())
+        "available_models": list(llm_mgr.agents.keys())
     }

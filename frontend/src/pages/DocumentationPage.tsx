@@ -252,7 +252,7 @@ const workflows = {
   }
 };
 
-export const AgentsPage: React.FC = () => {
+export const DocumentationPage: React.FC = () => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [activeWorkflows, setActiveWorkflows] = useState<Set<string>>(new Set());
 
