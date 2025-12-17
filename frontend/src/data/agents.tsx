@@ -1,4 +1,5 @@
 import { Bot, FileText, Shield, AlertTriangle, Edit3, Brain, Users, CheckCircle, BarChart3 } from 'lucide-react';
+import React from 'react';
 
 export interface Agent {
   id: string;
@@ -23,6 +24,17 @@ export const agents: Agent[] = [
     input: 'Raw PDF files',
     output: 'Structured contract text + metadata + embeddings',
     color: 'bg-blue-500'
+  },
+  {
+    id: 'supervisor',
+    name: 'Supervisor Agent',
+    icon: <Brain className="w-6 h-6" />,
+    role: 'Multi-Agent Coordination',
+    description: 'Coordinates and supervises all contract analysis agents, manages workflow execution and error handling',
+    capabilities: ['Agent coordination', 'Error recovery', 'Quality validation', 'Resource management', 'Dynamic routing'],
+    input: 'Contract analysis request',
+    output: 'Coordinated multi-agent results',
+    color: 'bg-purple-600'
   },
   {
     id: 'planning',
@@ -125,8 +137,77 @@ export const agents: Agent[] = [
   }
 ];
 
+// AI Agent Patterns Implementation Status
+export interface AgentPattern {
+  name: string;
+  status: 'implemented' | 'partial' | 'missing';
+  description: string;
+  location?: string;
+  justification?: string;
+}
+
+export const agentPatterns: AgentPattern[] = [
+  {
+    name: 'Planning & Reasoning Pattern',
+    status: 'implemented',
+    description: 'Autonomous planning with query analysis and strategy selection',
+    location: 'backend/agents/planning/planning_agent.py'
+  },
+  {
+    name: 'Tool-Using Agent Pattern',
+    status: 'implemented',
+    description: 'Specialized tools for contract analysis tasks',
+    location: 'backend/agents/intelligence_tools.py, pdf_tools.py'
+  },
+  {
+    name: 'Multi-Agent Orchestration',
+    status: 'implemented',
+    description: 'Coordinated workflow execution across multiple agents',
+    location: 'backend/agents/contract_intelligence_agents.py'
+  },
+  {
+    name: 'Supervisor Pattern',
+    status: 'implemented',
+    description: 'Enterprise-grade coordination with quality gates and error recovery',
+    location: 'backend/agents/supervisor/supervisor_agent.py'
+  },
+  {
+    name: 'State Management Pattern',
+    status: 'implemented',
+    description: 'Shared workflow context and inter-agent data sharing',
+    location: 'backend/agents/intelligence_state.py, pdf_state.py'
+  },
+  {
+    name: 'Self-Reflection Pattern',
+    status: 'partial',
+    description: 'Plan validation and feedback adaptation in planning agent',
+    location: 'backend/agents/planning/planning_agent.py',
+    justification: 'Currently limited to plan validation. Could be enhanced with deeper self-assessment across all agents for improved decision-making and error correction.'
+  },
+  {
+    name: 'ReACT Pattern',
+    status: 'missing',
+    description: 'Reasoning-Action-Observation cycles for iterative problem solving',
+    justification: 'Would enable agents to iteratively refine their approach based on intermediate results. Useful for complex contract analysis where initial extraction might miss nuances.'
+  },
+  {
+    name: 'Chain-of-Thought Pattern',
+    status: 'missing',
+    description: 'Explicit step-by-step reasoning documentation',
+    justification: 'Would improve transparency and debugging of agent decisions. Particularly valuable for explaining why certain clauses were flagged or risk scores calculated.'
+  },
+  {
+    name: 'Memory/Advanced RAG Pattern',
+    status: 'partial',
+    description: 'Basic storage via Neo4j, missing advanced retrieval and context injection',
+    location: 'backend/infrastructure/contract_repository.py',
+    justification: 'Current implementation stores contracts but lacks sophisticated retrieval for similar contract analysis, precedent lookup, or contextual clause interpretation.'
+  }
+];
+
 export const getAgentTools = (agentId: string): string => {
   const toolMappings: Record<string, string> = {
+    'supervisor': 'SupervisorAgentV2, AgentRegistry, QualityManager, WorkflowEngine',
     'pdf-processing': 'PDFTextExtractorTool, ContractAnalyzerTool, DataValidatorTool',
     'planning': 'ContractSearchTool, EnhancedContractSearchTool (for analysis planning)',
     'document-embedding': 'GoogleGenerativeAIEmbeddings, DocumentEmbeddingStrategy, Neo4j Vector Storage',

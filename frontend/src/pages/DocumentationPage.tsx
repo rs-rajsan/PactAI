@@ -4,6 +4,7 @@ import { TechStackTab } from '../components/features/documentation/TechStackTab'
 import { ProductionTab } from '../components/features/documentation/ProductionTab';
 import { AgentsPage } from './AgentsPage';
 import { WorkflowsPage } from './WorkflowsPage';
+import { SupervisorPage } from './SupervisorPage';
 
 export const DocumentationPage: React.FC = () => {
   return (
@@ -16,13 +17,18 @@ export const DocumentationPage: React.FC = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="agents" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="supervisor" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="supervisor">Supervisor Agent</TabsTrigger>
           <TabsTrigger value="agents">AI Agents</TabsTrigger>
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="architecture">Tech Stack</TabsTrigger>
           <TabsTrigger value="production">Prototype to Production</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="supervisor" className="space-y-6">
+          <SupervisorPage />
+        </TabsContent>
 
         <TabsContent value="agents" className="space-y-6">
           <AgentsPage />
