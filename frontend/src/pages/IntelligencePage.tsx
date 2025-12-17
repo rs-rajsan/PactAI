@@ -60,7 +60,7 @@ export const IntelligencePage: React.FC = () => {
     <div className="space-y-8">
       {/* Header Section */}
       <div className="text-center bg-white rounded-lg p-8 shadow-sm border border-slate-200">
-        <h1 className="text-3xl font-bold text-slate-800 mb-3">Document Intelligence Platform</h1>
+        <h1 className="text-3xl font-bold text-slate-800 mb-3">Contract Intelligence Platform</h1>
         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
           Upload legal contracts and leverage AI-powered analysis for comprehensive insights, 
           risk assessment, and compliance review.
