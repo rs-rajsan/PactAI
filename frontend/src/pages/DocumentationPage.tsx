@@ -5,6 +5,7 @@ import { ProductionTab } from '../components/features/documentation/ProductionTa
 import { AgentsPage } from './AgentsPage';
 import { WorkflowsPage } from './WorkflowsPage';
 import { SupervisorPage } from './SupervisorPage';
+import { USPPage } from './USPPage';
 
 export const DocumentationPage: React.FC = () => {
   return (
@@ -17,14 +18,19 @@ export const DocumentationPage: React.FC = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="supervisor" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="usp" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="usp">Business Benefits</TabsTrigger>
           <TabsTrigger value="supervisor">Supervisor Agent</TabsTrigger>
           <TabsTrigger value="agents">AI Agents</TabsTrigger>
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="architecture">Tech Stack</TabsTrigger>
           <TabsTrigger value="production">Prototype to Production</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="usp" className="space-y-6">
+          <USPPage />
+        </TabsContent>
 
         <TabsContent value="supervisor" className="space-y-6">
           <SupervisorPage />

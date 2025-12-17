@@ -34,15 +34,15 @@ const Tabs: React.FC<TabsProps> = ({ defaultValue, value, onValueChange, classNa
 interface TabsListProps {
   className?: string;
   children: React.ReactNode;
-  value?: string;
+  currentValue?: string;
   onValueChange?: (value: string) => void;
 }
 
-const TabsList: React.FC<TabsListProps> = ({ className, children, value, onValueChange }) => (
+const TabsList: React.FC<TabsListProps> = ({ className, children, currentValue, onValueChange }) => (
   <div className={cn("inline-flex h-10 items-center justify-center rounded-md bg-slate-100 p-1 text-slate-500", className)}>
     {React.Children.map(children, child => 
       React.isValidElement(child) 
-        ? React.cloneElement(child, { currentValue: value, onValueChange })
+        ? React.cloneElement(child, { currentValue, onValueChange })
         : child
     )}
   </div>
