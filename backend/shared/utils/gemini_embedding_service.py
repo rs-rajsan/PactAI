@@ -1,0 +1,67 @@
+"""
+Gemini 1536-Dimensional Embedding Service
+Centralized service using google.genai for 1536-dim embeddings
+"""
+
+from google import genai
+from google.genai import types
+import os
+from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
+
+class GeminiEmbeddingService:
+    """Singleton service for Gemini 1536-dimensional embeddings"""
+    
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self):
+        if self._initialized:
+            return
+        
+        from dotenv import load_dotenv
+        load_dotenv()
+        
+        api_key = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY')
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY required for production")
+        
+        # Use Google GenAI client for 1536 dimensions
+        self.client = genai.Client(api_key=api_key)
+        self.model = "gemini-embedding-001"
+        self.dimensions = 1536
+        self._initialized = True
+    
+    def embed_query(self, text: str) -> List[float]:
+        """Generate 1536-dimensional embedding for text"""
+        try:
+            result = self.client.models.embed_content(
+                model=self.model,
+                contents=text,
+                config=types.EmbedContentConfig(output_dimensionality=self.dimensions)
+            )
+            
+            [embedding_obj] = result.embeddings
+            return list(embedding_obj.values)
+            
+        except Exception as e:
+            logger.error(f"Gemini embedding failed: {e}")
+            raise RuntimeError(f"Embedding generation failed: {e}")
+    
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple texts"""
+        try:
+            return [self.embed_query(text) for text in texts]
+        except Exception as e:
+            logger.error(f"Batch embedding failed: {e}")
+            raise RuntimeError(f"Batch embedding generation failed: {e}")
+
+# Global instance for backward compatibility
+embedding = GeminiEmbeddingService()

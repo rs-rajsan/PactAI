@@ -77,6 +77,19 @@ class ContractIntelligence:
     risk_assessment: RiskAssessment
     redlines: List[RedlineRecommendation]
     processing_time: float = 0.0
+    
+    # CUAD mitigation fields (Phase 1)
+    cuad_deviations: List[Dict[str, Any]] = None
+    jurisdiction_info: Dict[str, Any] = None
+    precedent_matches: List[Dict[str, Any]] = None
+    
+    def __post_init__(self):
+        if self.cuad_deviations is None:
+            self.cuad_deviations = []
+        if self.jurisdiction_info is None:
+            self.jurisdiction_info = {}
+        if self.precedent_matches is None:
+            self.precedent_matches = []
 
 @dataclass
 class AgentMessage:

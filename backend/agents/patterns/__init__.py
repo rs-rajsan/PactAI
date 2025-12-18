@@ -1,0 +1,1 @@
+"""AI Patterns module for advanced agent behaviors."""

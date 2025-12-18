@@ -20,6 +20,12 @@ class StepType(str, Enum):
     ASSESS_RISK = "assess_risk"
     GENERATE_REDLINES = "generate_redlines"
     VALIDATE_RESULTS = "validate_results"
+    
+    # CUAD mitigation steps (Phase 1)
+    CUAD_MITIGATION = "cuad_mitigation"
+    DEVIATION_ANALYSIS = "deviation_analysis"
+    JURISDICTION_ADAPTATION = "jurisdiction_adaptation"
+    PRECEDENT_MATCHING = "precedent_matching"
 
 @dataclass
 class ExecutionStep:
@@ -61,7 +67,8 @@ class SimplePlanningStrategy(IPlanningStrategy):
             ExecutionStep("step_1", StepType.EXTRACT_CLAUSES, "Extract key contract clauses"),
             ExecutionStep("step_2", StepType.CHECK_POLICIES, "Check policy compliance", ["step_1"]),
             ExecutionStep("step_3", StepType.ASSESS_RISK, "Calculate risk assessment", ["step_2"]),
-            ExecutionStep("step_4", StepType.GENERATE_REDLINES, "Generate redline suggestions", ["step_3"])
+            ExecutionStep("step_4", StepType.CUAD_MITIGATION, "CUAD deviation and jurisdiction analysis", ["step_3"]),
+            ExecutionStep("step_5", StepType.GENERATE_REDLINES, "Generate redline suggestions", ["step_4"])
         ]
         
         return ExecutionPlan(
@@ -80,8 +87,9 @@ class ComplexPlanningStrategy(IPlanningStrategy):
             ExecutionStep("step_1", StepType.EXTRACT_CLAUSES, "Deep clause extraction with validation"),
             ExecutionStep("step_2a", StepType.CHECK_POLICIES, "Policy compliance check", ["step_1"]),
             ExecutionStep("step_2b", StepType.ASSESS_RISK, "Initial risk assessment", ["step_1"]),
-            ExecutionStep("step_3", StepType.VALIDATE_RESULTS, "Cross-validate results", ["step_2a", "step_2b"]),
-            ExecutionStep("step_4", StepType.GENERATE_REDLINES, "Generate comprehensive redlines", ["step_3"])
+            ExecutionStep("step_3", StepType.CUAD_MITIGATION, "CUAD deviation and jurisdiction analysis", ["step_2a", "step_2b"]),
+            ExecutionStep("step_4", StepType.VALIDATE_RESULTS, "Cross-validate results", ["step_3"]),
+            ExecutionStep("step_5", StepType.GENERATE_REDLINES, "Generate comprehensive redlines", ["step_4"])
         ]
         
         return ExecutionPlan(

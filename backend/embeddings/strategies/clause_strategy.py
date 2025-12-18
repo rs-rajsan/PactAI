@@ -1,12 +1,12 @@
 from typing import List, Dict, Any
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from backend.shared.utils.gemini_embedding_service import embedding
 from . import EmbeddingStrategy
 
 class ClauseEmbeddingStrategy(EmbeddingStrategy):
     """Strategy for generating clause-specific embeddings"""
     
     def __init__(self):
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        self.embeddings = embedding
         self.cuad_clause_types = [
             "Document Name", "Parties", "Agreement Date", "Effective Date", "Expiration Date",
             "Renewal Term", "Notice Period To Terminate Renewal", "Governing Law", 
@@ -31,4 +31,4 @@ class ClauseEmbeddingStrategy(EmbeddingStrategy):
         return self.embeddings.embed_query(enhanced_content)
     
     def get_embedding_dimension(self) -> int:
-        return 768
+        return 1536

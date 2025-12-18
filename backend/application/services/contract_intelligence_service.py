@@ -158,18 +158,26 @@ class ContractIntelligenceService:
                 priority=redline_data.get("priority", "LOW")
             ))
         
-        return ContractIntelligence(
+        # Create ContractIntelligence with CUAD data
+        intelligence = ContractIntelligence(
             clauses=clauses,
             violations=violations,
             risk_assessment=risk_assessment,
             redlines=redlines
         )
+        
+        # Add CUAD fields if present
+        intelligence.cuad_deviations = analysis_result.get("cuad_deviations", [])
+        intelligence.jurisdiction_info = analysis_result.get("jurisdiction_info", {})
+        intelligence.precedent_matches = analysis_result.get("precedent_matches", [])
+        
+        return intelligence
     
     def _store_intelligence_results(self, contract_id: str, intelligence: ContractIntelligence):
         """Store intelligence analysis results in the database"""
         
         try:
-            # Update contract with intelligence data
+            # Update contract with intelligence data including CUAD fields
             intelligence_data = {
                 "risk_score": intelligence.risk_assessment.overall_risk_score,
                 "risk_level": intelligence.risk_assessment.risk_level,
@@ -177,10 +185,19 @@ class ContractIntelligenceService:
                 "clauses_count": len(intelligence.clauses),
                 "redlines_count": len(intelligence.redlines),
                 "intelligence_status": "completed",
-                "processing_time": intelligence.processing_time
+                "processing_time": intelligence.processing_time,
+                # CUAD-specific fields
+                "cuad_analysis_status": "completed",
+                "deviation_count": len(intelligence.cuad_deviations),
+                "jurisdiction_detected": intelligence.jurisdiction_info.get("jurisdiction", "unknown"),
+                "industry_detected": intelligence.jurisdiction_info.get("industry", "general"),
+                "precedent_matches": len(intelligence.precedent_matches),
+                "semantic_analysis_enabled": True,
+                "cache_enabled": True,
+                "performance_optimized": True
             }
             
-            # Store in Neo4j (extend existing contract node)
+            # Store in Neo4j with CUAD fields
             query = """
             MATCH (c:Contract {file_id: $contract_id})
             SET c.risk_score = $risk_score,
@@ -190,6 +207,14 @@ class ContractIntelligenceService:
                 c.redlines_count = $redlines_count,
                 c.intelligence_status = $intelligence_status,
                 c.processing_time = $processing_time,
+                c.cuad_analysis_status = $cuad_analysis_status,
+                c.deviation_count = $deviation_count,
+                c.jurisdiction_detected = $jurisdiction_detected,
+                c.industry_detected = $industry_detected,
+                c.precedent_matches = $precedent_matches,
+                c.semantic_analysis_enabled = $semantic_analysis_enabled,
+                c.cache_enabled = $cache_enabled,
+                c.performance_optimized = $performance_optimized,
                 c.intelligence_updated = datetime()
             RETURN c
             """
@@ -199,10 +224,47 @@ class ContractIntelligenceService:
                 **intelligence_data
             })
             
+            # Store performance metrics
+            self._store_performance_metrics(contract_id, intelligence)
+            
             logger.info(f"Stored intelligence results for contract: {contract_id}")
             
         except Exception as e:
             logger.error(f"Failed to store intelligence results for {contract_id}: {e}")
+    
+    def _store_performance_metrics(self, contract_id: str, intelligence: ContractIntelligence):
+        """Store performance metrics in database"""
+        try:
+            # Get validation result if available
+            validation_result = getattr(intelligence, 'validation_result', None)
+            
+            # Store performance metric
+            metric_query = """
+            CREATE (pm:PerformanceMetric {
+                metric_id: randomUUID(),
+                contract_id: $contract_id,
+                operation: 'cuad_analysis',
+                duration_ms: $duration_ms,
+                success: $success,
+                timestamp: datetime(),
+                phase_used: 'phase3',
+                validation_score: $validation_score,
+                deviation_count: $deviation_count,
+                jurisdiction: $jurisdiction
+            })
+            """
+            
+            self.repository.graph.query(metric_query, {
+                "contract_id": contract_id,
+                "duration_ms": intelligence.processing_time * 1000,
+                "success": True,
+                "validation_score": validation_result.confidence_score if validation_result else 0.0,
+                "deviation_count": len(intelligence.cuad_deviations),
+                "jurisdiction": intelligence.jurisdiction_info.get("jurisdiction", "unknown")
+            })
+            
+        except Exception as e:
+            logger.warning(f"Failed to store performance metrics: {e}")
 
 class ContractIntelligenceServiceFactory:
     """Factory for creating contract intelligence service"""

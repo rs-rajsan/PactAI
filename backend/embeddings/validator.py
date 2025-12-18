@@ -14,7 +14,7 @@ class EmbeddingValidator:
     """Validates embedding quality and consistency"""
     
     def __init__(self):
-        self.expected_dimension = 768  # Google text-embedding-004 dimension
+        self.expected_dimension = 1536  # Google gemini-embedding-001 dimension
         self.min_similarity_threshold = 0.1
         self.max_similarity_threshold = 0.99
     

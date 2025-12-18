@@ -46,12 +46,13 @@ async def analyze_contract_intelligence(
         if not intelligence:
             raise HTTPException(status_code=404, detail=f"Contract {contract_id} not found or has no content")
         
-        # Convert to response format
+        # Convert to response format with performance info
         response = {
             "contract_id": contract_id,
             "analysis_complete": True,
             "processing_time": intelligence.processing_time,
             "model_used": model,
+            "phase_used": "phase3_optimized",
             "results": {
                 "clauses": [
                     {
@@ -87,7 +88,14 @@ async def analyze_contract_intelligence(
                         "priority": redline.priority
                     }
                     for redline in intelligence.redlines
-                ]
+                ],
+                "cuad_analysis": {
+                    "deviations": getattr(intelligence, 'cuad_deviations', []),
+                    "jurisdiction": getattr(intelligence, 'jurisdiction_info', {}),
+                    "precedent_matches": getattr(intelligence, 'precedent_matches', []),
+                    "performance_optimized": True,
+                    "cache_enabled": True
+                }
             }
         }
         

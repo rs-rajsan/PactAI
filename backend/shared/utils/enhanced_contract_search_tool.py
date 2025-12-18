@@ -2,7 +2,7 @@ from typing import Any, List, Optional, Type
 from enum import Enum
 from dotenv import load_dotenv
 from langchain_core.tools import BaseTool
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from backend.shared.utils.gemini_embedding_service import embedding
 from langchain_neo4j import Neo4jGraph
 from pydantic import BaseModel, Field
 
@@ -15,6 +15,7 @@ class SearchLevel(str, Enum):
     SECTION = "section"
     CLAUSE = "clause"
     RELATIONSHIP = "relationship"
+    CHUNK = "chunk"
     ALL = "all"
 
 class NumberOperator(str, Enum):
@@ -33,7 +34,7 @@ class Location(BaseModel):
 graph: Neo4jGraph = Neo4jGraph(
     refresh_schema=False, driver_config={"notifications_min_severity": "OFF"}
 )
-embedding: Any = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+# embedding imported from gemini_embedding_service (1536 dimensions)
 
 def get_contracts_multi_level(
     embeddings: Any,
@@ -70,6 +71,9 @@ def get_contracts_multi_level(
     
     elif search_level == SearchLevel.RELATIONSHIP:
         return _search_relationships(embeddings, summary_search, parties, filters, params)
+    
+    elif search_level == SearchLevel.CHUNK:
+        return _search_chunks(embeddings, summary_search, filters, params)
     
     elif search_level == SearchLevel.ALL:
         return _search_all_levels(embeddings, summary_search, clause_types, section_types, 
@@ -251,13 +255,106 @@ def _search_relationships(embeddings, summary_search, parties, filters, params):
     output = graph.query(cypher_statement, params)
     return [convert_neo4j_date(el) for el in output]
 
+def _search_chunks(embeddings, summary_search, filters, params):
+    """Enhanced search at chunk level with semantic capabilities"""
+    
+    # Try semantic search first if available
+    if summary_search:
+        try:
+            # Check for new Chunk nodes with embeddings
+            semantic_query = """
+            MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)
+            WHERE c.embedding IS NOT NULL
+            WITH c, d, vector.similarity.cosine(c.embedding, $chunk_embedding) AS chunk_score
+            WHERE chunk_score > 0.7
+            RETURN {
+                total_count: count(c),
+                chunks: collect({
+                    document_id: d.id,
+                    chunk_type: c.chunk_type,
+                    content: substring(c.content, 0, 200) + '...',
+                    chunk_index: c.chunk_index,
+                    quality_score: c.quality_score,
+                    similarity_score: chunk_score,
+                    search_type: 'semantic'
+                })[..10]
+            } AS result
+            ORDER BY chunk_score DESC
+            """
+            
+            chunk_embedding = embeddings.embed_query(summary_search)
+            semantic_params = {"chunk_embedding": chunk_embedding}
+            
+            semantic_output = graph.query(semantic_query, semantic_params)
+            if semantic_output and semantic_output[0]['result']['total_count'] > 0:
+                return [convert_neo4j_date(el) for el in semantic_output]
+        except Exception as e:
+            print(f"Semantic chunk search failed, falling back to text search: {e}")
+    
+    # Fallback to text search across both new and legacy chunks
+    cypher_statement = """
+    MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)
+    WHERE c.content CONTAINS $search_text
+    RETURN {
+        total_count: count(c),
+        chunks: collect({
+            document_id: d.id,
+            chunk_type: c.chunk_type,
+            content: substring(c.content, 0, 200) + '...',
+            chunk_index: c.chunk_index,
+            quality_score: c.quality_score,
+            search_type: 'text_new'
+        })[..5]
+    } AS result
+    
+    UNION
+    
+    MATCH (c:Contract)-[:CONTAINS_CHUNK]->(dc:DocumentChunk)
+    WHERE dc.content CONTAINS $search_text
+    RETURN {
+        total_count: count(dc),
+        chunks: collect({
+            contract_id: c.file_id,
+            chunk_type: dc.chunk_type,
+            content: substring(dc.content, 0, 200) + '...',
+            chunk_order: dc.chunk_order,
+            confidence: dc.confidence,
+            search_type: 'text_legacy'
+        })[..5]
+    } AS result
+    """
+    
+    if summary_search:
+        params["search_text"] = summary_search
+    else:
+        # If no search text, return recent chunks
+        cypher_statement = """
+        MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)
+        RETURN {
+            total_count: count(c),
+            chunks: collect({
+                document_id: d.id,
+                chunk_type: c.chunk_type,
+                content: substring(c.content, 0, 200) + '...',
+                chunk_index: c.chunk_index,
+                quality_score: c.quality_score,
+                search_type: 'recent'
+            })[..10]
+        } AS result
+        ORDER BY c.chunk_index DESC
+        """
+    
+    output = graph.query(cypher_statement, params)
+    return [convert_neo4j_date(el) for el in output]
+
 def _search_all_levels(embeddings, summary_search, clause_types, section_types, filters, params):
     """Search across all levels and combine results"""
     results = {
         "documents": _search_documents(embeddings, summary_search, [], {}, None, None, None, None, None, None, None, None, None, None),
         "sections": _search_sections(embeddings, summary_search, section_types, [], {}),
         "clauses": _search_clauses(embeddings, summary_search, clause_types, [], {}),
-        "relationships": _search_relationships(embeddings, summary_search, None, [], {})
+        "relationships": _search_relationships(embeddings, summary_search, None, [], {}),
+        "chunks": _search_chunks(embeddings, summary_search, [], {})
     }
     return [results]
 
@@ -283,7 +380,7 @@ class EnhancedContractSearchTool(BaseTool):
     name: str = "EnhancedContractSearch"
     description: str = (
         "Advanced contract search with multi-level embedding support. "
-        "Can search at document, section, clause, or relationship levels for precise results."
+        "Can search at document, section, clause, chunk, or relationship levels for precise results."
     )
     args_schema: Type[BaseModel] = EnhancedContractInput
 

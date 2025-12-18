@@ -1,12 +1,12 @@
 from typing import List, Dict, Any
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from backend.shared.utils.gemini_embedding_service import embedding
 from . import EmbeddingStrategy
 
 class RelationshipEmbeddingStrategy(EmbeddingStrategy):
     """Strategy for generating relationship context embeddings"""
     
     def __init__(self):
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        self.embeddings = embedding
     
     def generate_embedding(self, content: str, metadata: Dict[str, Any] = None) -> List[float]:
         """Generate embedding for relationship context"""
@@ -32,4 +32,4 @@ class RelationshipEmbeddingStrategy(EmbeddingStrategy):
         return self.embeddings.embed_query(enhanced_content)
     
     def get_embedding_dimension(self) -> int:
-        return 768
+        return 1536

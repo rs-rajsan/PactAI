@@ -13,6 +13,11 @@ class IntelligenceState(TypedDict):
     risk_data: dict
     redline_suggestions: List[dict]
     
+    # CUAD mitigation results (Phase 1 extension)
+    cuad_deviations: List[dict]
+    jurisdiction_info: dict
+    precedent_matches: List[dict]
+    
     # Workflow metadata
     messages: List[Any]
     current_step: str

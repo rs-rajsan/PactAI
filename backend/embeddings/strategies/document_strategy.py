@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from backend.shared.utils.gemini_embedding_service import embedding
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from . import EmbeddingStrategy
 
@@ -7,7 +7,7 @@ class DocumentEmbeddingStrategy(EmbeddingStrategy):
     """Strategy for generating document-level embeddings"""
     
     def __init__(self):
-        self.embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        self.embeddings = embedding
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=8000,  # Larger chunks for document-level context
             chunk_overlap=400,
@@ -30,4 +30,4 @@ class DocumentEmbeddingStrategy(EmbeddingStrategy):
         return self.embeddings.embed_query(content)
     
     def get_embedding_dimension(self) -> int:
-        return 768  # Google text-embedding-004 dimension
+        return 1536  # Google text-embedding-004 dimension

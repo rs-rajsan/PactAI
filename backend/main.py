@@ -53,6 +53,22 @@ app.include_router(enhanced_upload_router)
 from backend.api.supervisor_api import router as supervisor_router
 app.include_router(supervisor_router)
 
+# Feedback API (Phase 2)
+from backend.api.feedback_api import router as feedback_router
+app.include_router(feedback_router)
+
+# Monitoring API (Phase 3)
+from backend.api.monitoring_api import router as monitoring_router
+app.include_router(monitoring_router)
+
+# Audit API (Production)
+from backend.api.audit_api import router as audit_router
+app.include_router(audit_router)
+
+# AI Patterns API
+from backend.api.patterns_api import router as patterns_router
+app.include_router(patterns_router)
+
 # Debug routes (development only)
 debug_router = create_debug_router()
 conditionally_include_router(app, debug_router, is_development())
@@ -158,7 +174,10 @@ async def runner(model: str, prompt: str, history: str, llm_mgr: LLMManager):
                     context.append(history_message.model_dump_json())
             elif "tools" in message[1]:
                 for tool_message in message[1]["tools"]["messages"]:
-                    context.append(tool_message.model_dump_json())
+                    if hasattr(tool_message, 'model_dump_json'):
+                        context.append(tool_message.model_dump_json())
+                    else:
+                        context.append(json.dumps(tool_message))
 
     yield f"data: {json.dumps({'content': context, 'type': 'history'})}\n\n"
     yield f"data: {json.dumps({'content': '', 'type': 'end'})}\n\n"

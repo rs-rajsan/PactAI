@@ -2,7 +2,7 @@ from typing import Any, List, Optional, Type
 
 from dotenv import load_dotenv
 from langchain_core.tools import BaseTool
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from backend.shared.utils.gemini_embedding_service import embedding
 from langchain_neo4j import Neo4jGraph
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -53,7 +53,7 @@ CONTRACT_TYPES = [
 graph: Neo4jGraph = Neo4jGraph(
     refresh_schema=False, driver_config={"notifications_min_severity": "OFF"}
 )
-embedding: Any = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+# embedding imported from gemini_embedding_service (1536 dimensions)
 
 
 class NumberOperator(str, Enum):

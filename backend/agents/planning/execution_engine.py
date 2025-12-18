@@ -86,6 +86,8 @@ class StepExecutor:
                     result = await self._execute_redline_generation(step, context)
                 elif step.step_type == StepType.VALIDATE_RESULTS:
                     result = await self._execute_validation(step, context)
+                elif step.step_type == StepType.CUAD_MITIGATION:
+                    result = await self._execute_cuad_mitigation(step, context)
                 else:
                     raise ValueError(f"Unknown step type: {step.step_type}")
                 
@@ -174,6 +176,95 @@ class StepExecutor:
             "issues": issues,
             "validated_at": datetime.now().isoformat()
         }
+    
+    async def _execute_cuad_mitigation(self, step: ExecutionStep, context: Dict[str, Any]) -> Dict:
+        """Execute enhanced CUAD mitigation analysis"""
+        try:
+            # Try optimized Phase 3 tools first
+            from backend.agents.optimized_cuad_tools import (
+                OptimizedDeviationDetectorTool, OptimizedJurisdictionAdapterTool, OptimizedPrecedentMatcherTool
+            )
+            from backend.agents.feedback_learning_system import AdaptiveAnalyzer
+            
+            clauses = context.get("extracted_clauses", [])
+            contract_text = context.get("contract_text", "")
+            
+            # Run optimized CUAD tools
+            deviation_tool = OptimizedDeviationDetectorTool()
+            jurisdiction_tool = OptimizedJurisdictionAdapterTool()
+            precedent_tool = OptimizedPrecedentMatcherTool()
+            
+            deviations = json.loads(deviation_tool._run(json.dumps(clauses)))
+            jurisdiction_info = json.loads(jurisdiction_tool._run(contract_text))
+            precedent_matches = json.loads(precedent_tool._run(json.dumps(clauses)))
+            
+            # Apply adaptive learning
+            adaptive_analyzer = AdaptiveAnalyzer()
+            enhanced_clauses = []
+            for clause in clauses:
+                enhanced_analysis = adaptive_analyzer.enhance_analysis(clause, clause)
+                enhanced_clauses.append(enhanced_analysis)
+            
+            return {
+                "cuad_deviations": deviations,
+                "jurisdiction_info": jurisdiction_info,
+                "precedent_matches": precedent_matches,
+                "enhanced_clauses": enhanced_clauses,
+                "analysis_method": "optimized_phase3"
+            }
+            
+        except Exception as e:
+            logger.warning(f"Optimized CUAD tools failed, falling back to enhanced tools: {e}")
+            
+            # Try Phase 2 tools
+            try:
+                from backend.agents.enhanced_cuad_tools import (
+                    EnhancedDeviationDetectorTool, EnhancedJurisdictionAdapterTool, EnhancedPrecedentMatcherTool
+                )
+                
+                clauses = context.get("extracted_clauses", [])
+                contract_text = context.get("contract_text", "")
+                
+                deviation_tool = EnhancedDeviationDetectorTool()
+                jurisdiction_tool = EnhancedJurisdictionAdapterTool()
+                precedent_tool = EnhancedPrecedentMatcherTool()
+                
+                deviations = json.loads(deviation_tool._run(json.dumps(clauses)))
+                jurisdiction_info = json.loads(jurisdiction_tool._run(contract_text))
+                precedent_matches = json.loads(precedent_tool._run(json.dumps(clauses)))
+                
+                return {
+                    "cuad_deviations": deviations,
+                    "jurisdiction_info": jurisdiction_info,
+                    "precedent_matches": precedent_matches,
+                    "analysis_method": "enhanced_phase2_fallback"
+                }
+                
+            except Exception as e2:
+                logger.warning(f"Enhanced CUAD tools also failed, falling back to Phase 1: {e2}")
+            
+            # Fallback to Phase 1 tools
+            from backend.agents.cuad_mitigation_tools import (
+                DeviationDetectorTool, JurisdictionAdapterTool, PrecedentMatcherTool
+            )
+            
+            clauses = context.get("extracted_clauses", [])
+            contract_text = context.get("contract_text", "")
+            
+            deviation_tool = DeviationDetectorTool()
+            jurisdiction_tool = JurisdictionAdapterTool()
+            precedent_tool = PrecedentMatcherTool()
+            
+            deviations = json.loads(deviation_tool._run(json.dumps(clauses)))
+            jurisdiction_info = json.loads(jurisdiction_tool._run(contract_text))
+            precedent_matches = json.loads(precedent_tool._run(json.dumps(clauses)))
+            
+            return {
+                "cuad_deviations": deviations,
+                "jurisdiction_info": jurisdiction_info,
+                "precedent_matches": precedent_matches,
+                "analysis_method": "fallback_phase1"
+            }
     
     def _get_input_summary(self, step: ExecutionStep, context: Dict[str, Any]) -> str:
         """Get human-readable input summary for tracking"""
@@ -290,6 +381,11 @@ class PlanExecutionEngine:
             self.execution_context["redline_suggestions"] = result.output_data
         elif step.step_type == StepType.VALIDATE_RESULTS:
             self.execution_context["validation_results"] = result.output_data
+        elif step.step_type == StepType.CUAD_MITIGATION:
+            cuad_data = result.output_data
+            self.execution_context["cuad_deviations"] = cuad_data.get("cuad_deviations", [])
+            self.execution_context["jurisdiction_info"] = cuad_data.get("jurisdiction_info", {})
+            self.execution_context["precedent_matches"] = cuad_data.get("precedent_matches", [])
     
     def _format_final_results(self) -> Dict[str, Any]:
         """Format results in the expected contract intelligence format"""
@@ -298,6 +394,9 @@ class PlanExecutionEngine:
             "violations": self.execution_context.get("policy_violations", []),
             "risk_assessment": self.execution_context.get("risk_data", {}),
             "redlines": self.execution_context.get("redline_suggestions", []),
+            "cuad_deviations": self.execution_context.get("cuad_deviations", []),
+            "jurisdiction_info": self.execution_context.get("jurisdiction_info", {}),
+            "precedent_matches": self.execution_context.get("precedent_matches", []),
             "validation": self.execution_context.get("validation_results", {}),
             "processing_complete": True,
             "planned_execution": True
