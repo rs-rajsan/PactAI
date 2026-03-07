@@ -29,6 +29,7 @@ class IntelligenceOrchestrator:
         
         # Add nodes with descriptive names (no conflicts)
         workflow.add_node("clause_extraction", self._extract_clauses)
+        workflow.add_node("pattern_analysis", self._pattern_analysis)  # NEW: Pattern integration
         workflow.add_node("policy_checking", self._check_policies)
         workflow.add_node("risk_calculation", self._calculate_risks)
         
@@ -37,9 +38,10 @@ class IntelligenceOrchestrator:
         
         workflow.add_node("redline_generation", self._generate_redlines)
         
-        # Define workflow with CUAD step
+        # Define workflow with pattern and CUAD steps
         workflow.set_entry_point("clause_extraction")
-        workflow.add_edge("clause_extraction", "policy_checking")
+        workflow.add_edge("clause_extraction", "pattern_analysis")  # NEW: Pattern step
+        workflow.add_edge("pattern_analysis", "policy_checking")
         workflow.add_edge("policy_checking", "risk_calculation")
         workflow.add_edge("risk_calculation", "cuad_mitigation")
         workflow.add_edge("cuad_mitigation", "redline_generation")
@@ -73,6 +75,55 @@ class IntelligenceOrchestrator:
                 "extracted_clauses": [],
                 "processing_result": {"status": "error", "error": f"Clause extraction failed: {e}"}
             }
+    
+    def _pattern_analysis(self, state: IntelligenceState) -> IntelligenceState:
+        """Pattern-based analysis using ReACT or Chain-of-Thought"""
+        from backend.agents.patterns.pattern_selector import PatternSelector
+        from backend.agents.patterns.react_agent import ReACTAgent
+        from backend.agents.patterns.chain_of_thought_agent import ChainOfThoughtAgent
+        import asyncio
+        
+        # Select pattern based on complexity
+        pattern = PatternSelector.select_pattern({
+            'contract_text': state['contract_text'],
+            'clauses': state['extracted_clauses'],
+            'violations': state.get('policy_violations', [])
+        })
+        
+        if pattern == "react":
+            agent = ReACTAgent(max_iterations=3)
+            result = asyncio.run(agent.execute({
+                'contract_text': state['contract_text'],
+                'clauses': state['extracted_clauses'],
+                'contract_id': state.get('contract_id', 'unknown')
+            }))
+            
+            return {**state,
+                'pattern_analysis': result,
+                'pattern_used': 'ReACT',
+                'current_step': 'pattern_analysis'
+            }
+        
+        elif pattern == "chain_of_thought":
+            agent = ChainOfThoughtAgent()
+            result = asyncio.run(agent.execute({
+                'clauses': state['extracted_clauses'],
+                'task_type': 'risk_assessment',
+                'contract_id': state.get('contract_id', 'unknown')
+            }))
+            
+            return {**state,
+                'pattern_analysis': result,
+                'pattern_used': 'Chain-of-Thought',
+                'current_step': 'pattern_analysis'
+            }
+        
+        # Standard workflow - no pattern
+        logger.info("Using standard workflow, skipping pattern analysis")
+        return {**state, 
+            'pattern_used': 'Standard',
+            'current_step': 'pattern_analysis'
+        }
     
     def _check_policies(self, state: IntelligenceState) -> IntelligenceState:
         """Check policy compliance - Single Responsibility"""
@@ -440,6 +491,8 @@ class IntelligenceOrchestrator:
             "jurisdiction_info": final_state.get("jurisdiction_info", {}),
             "precedent_matches": final_state.get("precedent_matches", []),
             "validation_result": final_state.get("validation_result"),
+            "pattern_used": final_state.get("pattern_used", "Standard"),
+            "pattern_analysis": final_state.get("pattern_analysis", {}),
             "processing_complete": final_state["is_complete"]
         }
 

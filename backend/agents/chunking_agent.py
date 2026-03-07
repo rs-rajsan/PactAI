@@ -46,7 +46,7 @@ class ChunkingAgent:
     async def process_document(self, document_id: str, content: str, 
                              metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """Process document using orchestrator for comprehensive chunking."""
-        from .chunking_orchestrator import ChunkingOrchestrator, ChunkingCommandFactory
+        from backend.infrastructure.chunking.chunking_orchestrator import ChunkingOrchestrator, ChunkingCommandFactory
         
         try:
             # Use orchestrator for comprehensive processing

@@ -9,9 +9,16 @@ class MessageType(Enum):
     NOTIFICATION = "notification"
 
 @dataclass
+class WorkflowContext:
+    workflow_id: str
+    workflow_type: str
+    context_data: Dict[str, Any] = None
+    correlation_id: str = ""
+
+@dataclass
 class AgentContext:
     input_data: Dict[str, Any]
-    workflow_context: 'WorkflowContext'
+    workflow_context: Optional['WorkflowContext'] = None
     correlation_id: str = ""
 
 @dataclass

@@ -59,10 +59,15 @@ class DocumentProcessingService:
         if model_name == "gpt-4o":
             from langchain_openai import ChatOpenAI
             return ChatOpenAI(model="gpt-4o", temperature=0)
-        elif model_name in ["gemini-1.5-pro", "gemini-2.0-flash-exp", "gemini-2.0-flash"]:
+        elif model_name in ["gemini-1.5-pro", "gemini-2.0-flash-exp", "gemini-2.0-flash", "gemini-2.5-flash"]:
             from langchain_google_genai import ChatGoogleGenerativeAI
-            # Fix model name mapping
-            actual_model = "gemini-2.0-flash-exp" if model_name == "gemini-2.0-flash" else model_name
+            model_mapping = {
+                "gemini-2.0-flash-exp": "gemini-2.5-flash",
+                "gemini-2.0-flash": "gemini-2.5-flash",
+                "gemini-2.5-flash": "gemini-2.5-flash",
+                "gemini-1.5-pro": "gemini-1.5-pro"
+            }
+            actual_model = model_mapping.get(model_name, "gemini-2.5-flash")
             return ChatGoogleGenerativeAI(model=actual_model, temperature=0)
         elif model_name == "sonnet-3.5":
             from langchain_anthropic import ChatAnthropic

@@ -69,6 +69,10 @@ app.include_router(audit_router)
 from backend.api.patterns_api import router as patterns_router
 app.include_router(patterns_router)
 
+# Policy Management API
+from backend.api.policy_api import router as policy_router
+app.include_router(policy_router)
+
 # Debug routes (development only)
 debug_router = create_debug_router()
 conditionally_include_router(app, debug_router, is_development())

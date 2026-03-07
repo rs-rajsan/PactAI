@@ -1,8 +1,10 @@
-"""ReACT Pattern Agent - Reasoning-Action-Observation cycles."""
+"""ReACT Pattern Agent - Reasoning-Action-Observation cycles with SOLID principles."""
 
 from typing import Dict, Any, List
 from dataclasses import dataclass
-from abc import ABC, abstractmethod
+from .base_pattern_agent import BasePatternAgent
+from backend.agents.intelligence_tools import ClauseDetectorTool
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,70 +19,51 @@ class ReACTStep:
     iteration: int
 
 
-class ReACTAction(ABC):
-    @abstractmethod
-    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        pass
 
-
-class ClauseSearchAction(ReACTAction):
-    def __init__(self, search_terms: List[str]):
-        self.search_terms = search_terms
+class ReACTAgent(BasePatternAgent):
+    """ReACT Pattern: Reasoning-Action-Observation (SOLID: SRP, OCP, DIP)"""
     
-    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        contract_text = context.get('contract_text', '')
-        results = []
-        
-        for term in self.search_terms:
-            matches = []
-            lines = contract_text.split('\n')
-            for i, line in enumerate(lines):
-                if term.lower() in line.lower():
-                    matches.append({
-                        'line_number': i + 1,
-                        'content': line.strip(),
-                        'context': ' '.join(lines[max(0, i-1):i+2])
-                    })
-            
-            results.append({'term': term, 'matches': matches, 'count': len(matches)})
-        
-        return {'search_results': results, 'total_matches': sum(r['count'] for r in results)}
-
-
-class ReACTAgent:
     def __init__(self, max_iterations: int = 3):
+        super().__init__("ReACT Pattern Agent")
         self.max_iterations = max_iterations
         self.steps: List[ReACTStep] = []
+        self.clause_tool = ClauseDetectorTool()  # Reuse existing tool (DRY)
     
-    async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            query = context.get('query', '')
-            contract_text = context.get('contract_text', '')
+    def get_agent_role(self) -> str:
+        return "Iterative contract analysis with reasoning-action-observation cycles"
+    
+    def get_pattern_name(self) -> str:
+        return "ReACT"
+    
+    async def _execute_pattern(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """ReACT-specific logic reusing existing tools (DRY principle)"""
+        contract_text = context.get('contract_text', '')
+        
+        if not contract_text:
+            return {'success': False, 'error': 'Missing contract text'}
+        
+        self.steps = []
+        working_context = {'contract_text': contract_text, 'findings': []}
+        
+        for iteration in range(self.max_iterations):
+            step = await self._execute_react_cycle(working_context, iteration)
+            self.steps.append(step)
             
-            if not query or not contract_text:
-                return {'error': 'Missing query or contract text'}
+            logger.info(f"ReACT iteration {iteration}: confidence={step.confidence:.2f}")
             
-            working_context = {'contract_text': contract_text, 'original_query': query, 'findings': []}
+            if step.confidence >= 0.8:
+                logger.info(f"ReACT converged at iteration {iteration}")
+                break
             
-            for iteration in range(self.max_iterations):
-                step = await self._execute_react_cycle(working_context, iteration)
-                self.steps.append(step)
-                
-                if step.confidence >= 0.8:
-                    break
-                
-                working_context['previous_steps'] = self.steps
-            
-            return {
-                'success': True,
-                'steps': [self._step_to_dict(step) for step in self.steps],
-                'final_confidence': self.steps[-1].confidence if self.steps else 0.0,
-                'findings': working_context.get('findings', [])
-            }
-            
-        except Exception as e:
-            logger.error(f"ReACT agent error: {e}")
-            return {'error': str(e)}
+            working_context['previous_steps'] = self.steps
+        
+        return {
+            'success': True,
+            'pattern': 'ReACT',
+            'steps': [self._step_to_dict(step) for step in self.steps],
+            'final_confidence': self.steps[-1].confidence if self.steps else 0.0,
+            'iterations': len(self.steps)
+        }
     
     async def _execute_react_cycle(self, context: Dict[str, Any], iteration: int) -> ReACTStep:
         reasoning = self._generate_reasoning(context, iteration)
@@ -98,19 +81,17 @@ class ReACTAgent:
             return f"Previous search needs refinement. Focusing on more specific terms."
     
     async def _execute_action(self, context: Dict[str, Any], reasoning: str, iteration: int) -> tuple[str, str]:
-        query = context.get('original_query', '')
+        """Execute action using existing ClauseDetectorTool (DRY)"""
+        contract_text = context.get('contract_text', '')
         
-        if iteration == 0:
-            action = ClauseSearchAction([query])
-            action_desc = f"Searching for '{query}'"
-        else:
-            refined_terms = self._get_refined_terms(query)
-            action = ClauseSearchAction(refined_terms)
-            action_desc = f"Refined search: {refined_terms}"
+        # Reuse existing tool instead of custom action
+        clauses_json = self.clause_tool._run(contract_text)
+        clauses = json.loads(clauses_json)
         
-        result = await action.execute(context)
-        context['findings'].extend(self._extract_findings(result))
-        observation = self._generate_observation(result)
+        action_desc = f"Clause detection (iteration {iteration})"
+        observation = f"Found {len(clauses)} clauses"
+        
+        context['findings'] = clauses
         
         return action_desc, observation
     

@@ -73,5 +73,23 @@ class SentenceAdaptiveStrategy(IChunkingStrategy):
             overlap_with=[f"chunk_{index-1}"] if index > 0 else []
         )
     
+    def chunk_text(self, text: str, metadata: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """Chunk text method for compatibility with orchestrator."""
+        chunk_results = self.chunk_document(text, metadata or {})
+        return [
+            {
+                'chunk_id': chunk.chunk_id,
+                'content': chunk.content,
+                'chunk_type': chunk.chunk_type,
+                'start_position': chunk.start_pos,
+                'end_position': chunk.end_pos,
+                'size': len(chunk.content),
+                'confidence': chunk.confidence,
+                'has_overlap': len(chunk.overlap_with) > 0,
+                'overlap_with': chunk.overlap_with
+            }
+            for chunk in chunk_results
+        ]
+    
     def get_chunk_size(self) -> int:
         return self.base_size

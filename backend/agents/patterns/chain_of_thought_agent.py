@@ -1,7 +1,10 @@
-"""Chain-of-Thought Pattern Agent - Explicit step-by-step reasoning."""
+"""Chain-of-Thought Pattern Agent - Explicit step-by-step reasoning with SOLID principles."""
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from .base_pattern_agent import BasePatternAgent
+from backend.agents.intelligence_tools import PolicyCheckerTool, RiskCalculatorTool
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,28 +20,36 @@ class ThoughtStep:
     confidence: float
 
 
-class ChainOfThoughtAgent:
-    def __init__(self):
-        self.thought_chain: List[ThoughtStep] = []
+class ChainOfThoughtAgent(BasePatternAgent):
+    """Chain-of-Thought: Explicit step-by-step reasoning (SOLID: SRP, DIP)"""
     
-    async def process(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            task_type = context.get('task_type', 'risk_assessment')
-            
-            if task_type == 'risk_assessment':
-                return await self._risk_assessment_chain(context)
-            elif task_type == 'clause_analysis':
-                return await self._clause_analysis_chain(context)
-            else:
-                return {'error': f'Unknown task type: {task_type}'}
-                
-        except Exception as e:
-            logger.error(f"Chain-of-Thought error: {e}")
-            return {'error': str(e)}
+    def __init__(self):
+        super().__init__("Chain-of-Thought Pattern Agent")
+        self.thought_chain: List[ThoughtStep] = []
+        self.policy_tool = PolicyCheckerTool()  # Reuse existing (DRY)
+        self.risk_tool = RiskCalculatorTool()  # Reuse existing (DRY)
+    
+    def get_agent_role(self) -> str:
+        return "Step-by-step reasoning for contract risk assessment"
+    
+    def get_pattern_name(self) -> str:
+        return "Chain-of-Thought"
+    
+    async def _execute_pattern(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """CoT-specific logic reusing existing tools (DRY principle)"""
+        task_type = context.get('task_type', 'risk_assessment')
+        
+        if task_type == 'risk_assessment':
+            return await self._risk_assessment_chain(context)
+        elif task_type == 'clause_analysis':
+            return await self._clause_analysis_chain(context)
+        else:
+            return {'success': False, 'error': f'Unknown task type: {task_type}'}
     
     async def _risk_assessment_chain(self, context: Dict[str, Any]) -> Dict[str, Any]:
         clauses = context.get('clauses', [])
-        policies = context.get('policies', {})
+        tenant_id = context.get('tenant_id', 'default')
+        contract_type = context.get('contract_type', 'general')
         
         # Step 1: Identify clauses
         step1 = await self._add_thought_step(
@@ -49,42 +60,38 @@ class ChainOfThoughtAgent:
             0.9
         )
         
-        # Step 2: Check policy compliance
-        violations = []
-        for clause in clauses:
-            clause_type = clause.get('type', '')
-            if clause_type in policies:
-                policy = policies[clause_type]
-                if not self._check_compliance(clause, policy):
-                    violations.append({
-                        'clause_type': clause_type,
-                        'violation': self._get_violation_reason(clause, policy),
-                        'severity': self._calculate_severity(clause, policy)
-                    })
+        # Step 2: Load dynamic policies from database
+        from backend.infrastructure.policy_repository import PolicyRepository
+        policy_repo = PolicyRepository()
+        policies = policy_repo.get_applicable_policies(tenant_id, contract_type)
         
         step2 = await self._add_thought_step(
-            2, "Check Policy Compliance",
-            {'policies_checked': len(policies), 'clauses_analyzed': len(clauses)},
-            {'violations_found': len(violations), 'violations': violations},
-            f"Checked {len(clauses)} clauses against {len(policies)} policies, found {len(violations)} violations",
-            0.85 if violations else 0.95
+            2, "Load Applicable Policies",
+            {'tenant_id': tenant_id, 'contract_type': contract_type},
+            {'policies_loaded': len(policies)},
+            f"Loaded {len(policies)} applicable policies from database for tenant {tenant_id}",
+            0.9
         )
         
-        # Step 3: Calculate risk scores
-        risk_scores = []
-        for violation in violations:
-            severity = violation['severity']
-            risk_score = self._severity_to_risk_score(severity)
-            risk_scores.append(risk_score)
-        
-        overall_risk = max(risk_scores) if risk_scores else 1
+        # Step 3: Check policy compliance using dynamic policies
+        violations = []
+        for clause in clauses:
+            clause_content = clause.get('content', '').lower()
+            clause_type = clause.get('type', 'general')
+            
+            # Check against loaded policies
+            for policy in policies:
+                if clause_type in policy.applies_to or 'general' in policy.applies_to:
+                    violation = self._check_dynamic_policy_compliance(clause, policy)
+                    if violation:
+                        violations.append(violation)
         
         step3 = await self._add_thought_step(
-            3, "Calculate Risk Scores",
-            {'violations': len(violations)},
-            {'individual_scores': risk_scores, 'overall_risk': overall_risk},
-            f"Calculated risk scores: individual={risk_scores}, overall={overall_risk}/10",
-            0.9
+            3, "Check Policy Compliance",
+            {'policies_checked': len(policies), 'clauses_analyzed': len(clauses)},
+            {'violations_found': len(violations), 'violations': violations},
+            f"Checked {len(clauses)} clauses against {len(policies)} dynamic policies, found {len(violations)} violations",
+            0.85 if violations else 0.95
         )
         
         # Step 4: Generate recommendations
@@ -205,16 +212,36 @@ class ChainOfThoughtAgent:
         self.thought_chain.append(step)
         return step
     
-    def _check_compliance(self, clause: Dict[str, Any], policy: Dict[str, Any]) -> bool:
-        # Simple compliance check logic
+    def _check_dynamic_policy_compliance(self, clause: Dict[str, Any], policy) -> Optional[Dict[str, Any]]:
+        """Check clause compliance against dynamic policy from database."""
         clause_content = clause.get('content', '').lower()
+        rule_text = policy.rule_text.lower()
         
-        if 'liability' in policy.get('type', ''):
-            return 'unlimited' not in clause_content
-        elif 'termination' in policy.get('type', ''):
-            return 'immediate' not in clause_content
+        if policy.rule_type == 'prohibited':
+            # Check for prohibited terms
+            prohibited_terms = ['unlimited liability', 'immediate termination', 'no notice']
+            for term in prohibited_terms:
+                if term in clause_content and term in rule_text:
+                    return {
+                        'clause_type': clause.get('type', 'unknown'),
+                        'violation': f"Clause contains prohibited term: {term}",
+                        'severity': policy.severity,
+                        'policy_rule_id': policy.id
+                    }
         
-        return True
+        elif policy.rule_type == 'mandatory':
+            # Check for missing mandatory terms
+            mandatory_terms = ['liability cap', 'notice period', 'governing law']
+            for term in mandatory_terms:
+                if term in rule_text and term not in clause_content:
+                    return {
+                        'clause_type': clause.get('type', 'unknown'),
+                        'violation': f"Clause missing mandatory term: {term}",
+                        'severity': policy.severity,
+                        'policy_rule_id': policy.id
+                    }
+        
+        return None
     
     def _get_violation_reason(self, clause: Dict[str, Any], policy: Dict[str, Any]) -> str:
         clause_content = clause.get('content', '').lower()

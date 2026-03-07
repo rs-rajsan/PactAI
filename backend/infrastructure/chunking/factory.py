@@ -8,6 +8,7 @@ from .paragraph_strategy import ParagraphStrategy
 from .section_strategy import SectionStrategy
 from .clause_strategy import ClauseStrategy
 from .hybrid_strategy import HybridStrategy
+from .policy_strategy import PolicyChunkingStrategy
 from .document_analyzer import analyze_document
 from .content_density_analyzer import ContentDensityAnalyzer
 
@@ -25,7 +26,8 @@ class ChunkingFactory:
             "paragraph": ParagraphStrategy,
             "section": SectionStrategy,
             "clause": ClauseStrategy,
-            "hybrid": HybridStrategy
+            "hybrid": HybridStrategy,
+            "policy": PolicyChunkingStrategy
         }
         
         if strategy_type == "auto":
