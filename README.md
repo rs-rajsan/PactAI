@@ -53,8 +53,8 @@ The [Contract Understanding Atticus Dataset (CUAD)](https://www.atticusprojectai
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/karthikkv1981/contract_intelli_agent.git
-   cd contract_intelli_agent
+   git clone https://github.com/rs-rajsan/PactAI.git
+   cd PactAI
    ```
 
 2. **Configure Environment**:
