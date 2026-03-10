@@ -1,13 +1,14 @@
 import React, { useState, useCallback } from 'react';
-import { Button } from '../../shared/ui/button';
 import { Card } from '../../shared/ui/card';
 import { Loader } from '../../shared/ui/loader';
+import { Upload } from 'lucide-react';
 
 interface DocumentUploadProps {
   onUploadComplete?: (result: UploadResult) => void;
   modelSelection?: string;
   onWorkflowUpdate?: (status: any) => void;
   onUploadStart?: () => void;
+  variant?: 'default' | 'minimal';
 }
 
 interface UploadResult {
@@ -22,7 +23,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
   onUploadComplete,
   modelSelection = "gemini-2.0-flash",
   onWorkflowUpdate,
-  onUploadStart
+  onUploadStart,
+  variant = 'default'
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -79,7 +81,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
       const responseText = await response.text();
       console.log('Response text:', responseText);
-      
+
       let result: UploadResult;
       try {
         result = JSON.parse(responseText);
@@ -88,11 +90,11 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
         throw new Error(`Invalid response format: ${responseText.substring(0, 100)}`);
       }
       setUploadResult(result);
-      
+
       if (onUploadComplete) {
         onUploadComplete(result);
       }
-      
+
       // Final workflow status update
       setTimeout(async () => {
         try {
@@ -134,7 +136,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFiles(e.dataTransfer.files);
     }
@@ -171,17 +173,59 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     }
   };
 
+  if (variant === 'minimal') {
+    return (
+      <div className="w-full">
+        <div
+          onClick={() => !isUploading && document.getElementById('file-input')?.click()}
+          className={`
+            flex items-center justify-between p-2 rounded-lg border border-border bg-muted hover:bg-accent/50 transition-all cursor-pointer
+            ${isUploading ? 'opacity-50 pointer-events-none' : ''}
+          `}
+        >
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="p-1.5 bg-blue-600/20 text-blue-500 rounded">
+              <Upload className="h-4 w-4" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground truncate">
+              {isUploading ? 'Uploading...' : uploadResult?.status === 'success' ? uploadResult.filename : 'Upload New Contract'}
+            </span>
+          </div>
+          {isUploading && <Loader className="w-4 h-4" />}
+          {!isUploading && (
+            <div className="text-[10px] text-muted-foreground/60 font-bold px-1.5 py-0.5 border border-border rounded">
+              PDF
+            </div>
+          )}
+        </div>
+        <input
+          id="file-input"
+          type="file"
+          accept=".pdf"
+          onChange={handleFileInput}
+          className="hidden"
+          disabled={isUploading}
+        />
+        {uploadResult && uploadResult.status === 'error' && (
+          <p className="text-[10px] text-red-500 mt-1 pl-1 line-clamp-1">
+            {uploadResult.details}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-md mx-auto">
       <Card className="p-6">
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Upload PDF Contract</h3>
-          
+
           {/* Upload Area */}
           <div
             className={`
-              border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-              ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
+              border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors
+              ${dragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'}
               ${isUploading ? 'pointer-events-none opacity-50' : ''}
             `}
             onDragEnter={handleDrag}
@@ -193,15 +237,15 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             {isUploading ? (
               <div className="space-y-2">
                 <Loader className="mx-auto" />
-                <p className="text-sm text-gray-600">Processing PDF...</p>
+                <p className="text-sm text-muted-foreground">Processing PDF...</p>
               </div>
             ) : (
               <div className="space-y-2">
                 <div className="text-4xl">📄</div>
-                <p className="text-sm font-medium">
+                <p className="text-sm font-semibold text-foreground">
                   Drop PDF here or click to browse
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground/60">
                   Maximum file size: 50MB
                 </p>
               </div>
@@ -218,8 +262,8 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
           />
 
           {/* Model Selection Display */}
-          <div className="text-sm text-gray-600">
-            Using model: <span className="font-medium">{modelSelection}</span>
+          <div className="text-xs font-medium text-muted-foreground">
+            Using model: <span className="text-foreground">{modelSelection}</span>
           </div>
 
           {/* Upload Result */}

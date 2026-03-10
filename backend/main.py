@@ -1,4 +1,6 @@
 import json
+import logging
+import uuid
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -21,9 +23,15 @@ from backend.agents.agent_workflow_tracker import get_current_workflow_status
 
 load_dotenv()
 
+from backend.shared.utils.logging_config import setup_logging, CorrelationIdMiddleware
+setup_logging()
+
+logger = logging.getLogger(__name__)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup - Initialize once
+    logger.info("Initializing PactAI Backend with Centralized Logging & Request Tracing")
     app.state.llm_manager = LLMManager()
     yield
     # Shutdown - cleanup if needed
@@ -42,6 +50,7 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
+app.add_middleware(CorrelationIdMiddleware)
 
 # Include routers based on environment
 app.include_router(document_router)

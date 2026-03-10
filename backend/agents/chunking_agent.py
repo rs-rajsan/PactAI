@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import logging
 
+from backend.domain.entities import Chunk
 from backend.infrastructure.chunking.factory import ChunkingFactory
 from backend.infrastructure.chunking.storage_service import ChunkingStorageService
 from backend.infrastructure.chunking.document_analyzer import analyze_document
@@ -97,14 +98,17 @@ class ChunkingAgent:
         strategy = self.factory.create_strategy("sentence")
         chunks = strategy.chunk_text(content, metadata)
         
-        # Convert chunks to expected format
+        # Convert chunks to expected format using standard Chunk dataclass
         formatted_chunks = []
         for i, chunk in enumerate(chunks):
-            formatted_chunks.append(type('Chunk', (), {
-                'content': chunk['content'],
-                'start_position': chunk.get('start_position', 0),
-                'end_position': chunk.get('end_position', 0)
-            })())
+            formatted_chunks.append(Chunk(
+                content=chunk['content'],
+                chunk_index=i,
+                chunk_type="sentence",
+                confidence=1.0,
+                start_position=chunk.get('start_position', 0),
+                end_position=chunk.get('end_position', 0)
+            ))
         
         quality_score = self._assess_quality_sync(formatted_chunks)
         

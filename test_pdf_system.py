@@ -19,7 +19,7 @@ def test_pdf_upload_system():
     # Test 1: Check system status
     print("\n1. Testing system status...")
     try:
-        response = requests.get(f"{base_url}/documents/status")
+        response = requests.get(f"{base_url}/api/documents/status")
         if response.status_code == 200:
             status = response.json()
             print(f"✅ System operational")
@@ -41,7 +41,7 @@ def test_pdf_upload_system():
             "prompt": "What contract types are available?",
             "history": "[]"
         }
-        response = requests.post(f"{base_url}/run/", json=chat_payload)
+        response = requests.post(f"{base_url}/api/run/", json=chat_payload)
         if response.status_code == 200:
             print("✅ Chat endpoint working")
         else:
@@ -94,7 +94,7 @@ def test_pdf_upload_system():
             'model': 'gemini-2.0-flash'
         }
         
-        response = requests.post(f"{base_url}/documents/upload", files=files, data=data)
+        response = requests.post(f"{base_url}/api/documents/upload", files=files, data=data)
         
         if response.status_code == 200:
             result = response.json()
@@ -116,7 +116,7 @@ def test_pdf_upload_system():
                     "history": "[]"
                 }
                 
-                query_response = requests.post(f"{base_url}/run/", json=query_payload)
+                query_response = requests.post(f"{base_url}/api/run/", json=query_payload)
                 if query_response.status_code == 200:
                     print("✅ Contract query successful!")
                 else:

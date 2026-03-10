@@ -97,3 +97,18 @@ class AgentMessage:
     message_type: str
     data: Dict[str, Any]
     timestamp: str
+
+@dataclass
+class Chunk:
+    """Standard chunk entity for backward and forward compatibility."""
+    content: str
+    chunk_index: int
+    chunk_type: str = "sentence"
+    confidence: float = 1.0
+    start_position: int = 0
+    end_position: int = 0
+    size: Optional[int] = None
+
+    def __post_init__(self):
+        if self.size is None:
+            self.size = len(self.content)
